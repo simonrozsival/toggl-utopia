@@ -2,6 +2,7 @@ use actix_web::{middleware, web, App, HttpServer};
 
 mod endpoints;
 mod responses;
+mod sync;
 mod toggl_api;
 
 fn main() -> std::io::Result<()> {
@@ -15,6 +16,7 @@ fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             // .data(web::JsonConfig::default().limit(4096))
             .service(web::resource("/login").route(web::post().to(endpoints::login)))
+            .service(web::resource("/sync").route(web::post().to(endpoints::login)))
     })
     .bind(addr)?
     .run()
