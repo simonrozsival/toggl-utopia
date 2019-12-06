@@ -1,6 +1,7 @@
 use actix_web::{middleware, web, App, HttpServer};
 
 mod endpoints;
+mod models;
 mod responses;
 mod sync;
 mod toggl_api;

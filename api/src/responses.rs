@@ -2,6 +2,7 @@ use actix_web::HttpResponse;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
+use crate::models::Delta;
 use crate::toggl_api::models::ApiToken;
 
 #[derive(Serialize)]
@@ -20,15 +21,18 @@ where
 }
 
 #[derive(Serialize)]
-struct Error {
+struct Error<T>
+where
+    T: Serialize,
+{
     code: u64,
-    message: String,
+    error: T,
 }
 
 #[derive(Serialize)]
 struct LoginResult {
     api_token: ApiToken,
-    data: Vec<String>,
+    data: Delta,
 }
 
 fn meta(error: bool) -> Meta {
@@ -48,17 +52,20 @@ where
     }
 }
 
-fn error(code: u64, message: &str) -> Body<Error> {
+fn error<T>(code: u64, err: T) -> Body<Error<T>>
+where
+    T: Serialize,
+{
     Body {
         meta: meta(true),
-        payload: Error {
+        payload: Error::<T> {
             code: code,
-            message: message.into(),
+            error: err,
         },
     }
 }
 
-pub fn login_succeeded(token: ApiToken, data: Vec<String>) -> HttpResponse {
+pub fn login_succeeded(token: ApiToken, data: Delta) -> HttpResponse {
     let body = ok(LoginResult {
         api_token: token,
         data: data,
@@ -66,7 +73,15 @@ pub fn login_succeeded(token: ApiToken, data: Vec<String>) -> HttpResponse {
     HttpResponse::Ok().json(body)
 }
 
+pub fn something_went_wrong<E>(err: E) -> HttpResponse
+where
+    E: std::error::Error + std::fmt::Debug,
+{
+    let body = error(1, format!("{:?}", err));
+    HttpResponse::InternalServerError().json(body)
+}
+
 pub fn invalid_credentials() -> HttpResponse {
-    let body = error(1, "The credentials you provided are invalid.");
+    let body = error(2, "The credentials you provided are invalid.");
     HttpResponse::Forbidden().json(body)
 }
