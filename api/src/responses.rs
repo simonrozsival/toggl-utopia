@@ -7,7 +7,7 @@ use crate::toggl_api::models::ApiToken;
 #[derive(Serialize)]
 struct Meta {
     error: bool,
-    server_time: DateTime<Utc>,
+    utc_server_time: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -23,6 +23,12 @@ where
 struct Error {
     code: u64,
     message: String,
+}
+
+#[derive(Serialize)]
+struct LoginResult {
+    api_token: ApiToken,
+    data: Vec<String>,
 }
 
 fn meta(error: bool) -> Meta {
@@ -52,8 +58,11 @@ fn error(code: u64, message: &str) -> Body<Error> {
     }
 }
 
-pub fn api_token(token: ApiToken) -> HttpResponse {
-    let body = ok(token);
+pub fn login_succeeded(token: ApiToken, data: Vec<String>) -> HttpResponse {
+    let body = ok(LoginResult {
+        api_token: token,
+        data: data,
+    });
     HttpResponse::Ok().json(body)
 }
 

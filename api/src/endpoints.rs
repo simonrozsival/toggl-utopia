@@ -12,7 +12,13 @@ pub struct Credentials {
 
 pub fn login(credentials: web::Json<Credentials>) -> HttpResponse {
     match toggl_api::user::get_api_token(&credentials.email, &credentials.password) {
-        Ok(token) => api_token(token),
+        Ok(token) => login_succeeded(
+            token,
+            vec!["there", "will", "be", "real", "data", "I", "swear"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        ),
         Err(_) => invalid_credentials(),
     }
 }
