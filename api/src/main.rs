@@ -17,8 +17,8 @@ fn main() -> std::io::Result<()> {
         App::new()
             .wrap(middleware::Logger::default())
             .wrap(middleware::Compress::default())
-            .service(web::resource("/login").route(web::post().to(endpoints::login)))
-            .service(web::resource("/sync").route(web::post().to(endpoints::login)))
+            .service(web::resource("/current-snapshot").route(web::get().to(endpoints::login)))
+            .service(web::resource("/sync").route(web::post().to(endpoints::sync)))
     })
     .bind(addr)?
     .run()
