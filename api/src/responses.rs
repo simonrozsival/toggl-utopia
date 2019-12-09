@@ -61,7 +61,7 @@ where
     }
 }
 
-pub fn login_succeeded(data: Delta) -> HttpResponse {
+pub fn success(data: Delta) -> HttpResponse {
     let body = ok(data);
     HttpResponse::Ok().json(body)
 }

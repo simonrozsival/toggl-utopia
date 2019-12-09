@@ -38,3 +38,48 @@ pub struct Delta {
     pub projects: Option<Vec<Project>>,
     pub time_entries: Option<Vec<TimeEntry>>,
 }
+
+pub trait Id {
+    fn id(self: &Self) -> u64;
+}
+
+impl Id for User {
+    fn id(self: &Self) -> u64 {
+        self.id
+    }
+}
+
+impl Id for Project {
+    fn id(self: &Self) -> u64 {
+        self.id
+    }
+}
+
+impl Id for TimeEntry {
+    fn id(self: &Self) -> u64 {
+        self.id
+    }
+}
+
+impl Delta {
+    fn merge_optional_vectors<T>(client: Option<Vec<T>>, server: Option<Vec<T>>) -> Option<Vec<T>>
+    where
+        T: Clone,
+    {
+        match (client, server) {
+            (None, None) => None,
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (Some(x), Some(y)) => Some([x, y].concat()),
+        }
+    }
+
+    pub fn merge(client: &Delta, server: &Delta) -> Delta {
+        // Delta {
+        //     user: client.user.or(server.user), // I must think this one through later
+        //     projects: Delta::merge_optional_vectors(client.projects, server.projects),
+        //     time_entries: Delta::merge_optional_vectors(client.time_entries, server.time_entries),
+        // }
+        unimplemented!()
+    }
+}

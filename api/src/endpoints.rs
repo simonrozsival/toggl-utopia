@@ -1,10 +1,18 @@
 use actix_web::{web, HttpRequest, HttpResponse};
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
 
-use crate::responses::{invalid_credentials, login_succeeded, something_went_wrong};
-use crate::sync::login::fetch_server_state;
+use crate::responses::{invalid_credentials, something_went_wrong, success};
+use crate::sync;
 
 use crate::auth::Credentials;
 use crate::models::Delta;
+
+#[derive(Deserialize)]
+pub struct SyncRequestBody {
+    last_sync: DateTime<Utc>,
+    delta: Delta,
+}
 
 fn extract_credentials(req: HttpRequest) -> Option<Credentials> {
     req.headers()
@@ -19,17 +27,24 @@ pub fn login(req: HttpRequest) -> HttpResponse {
         None => return invalid_credentials(),
     };
 
-    match fetch_server_state(&credentials) {
-        Ok(delta) => login_succeeded(delta),
+    match sync::fetch_snapshot(&credentials) {
+        Ok(delta) => success(delta),
         Err(err) => something_went_wrong(err),
     }
 }
 
-pub fn sync((req, delta): (HttpRequest, web::Json<Delta>)) -> HttpResponse {
+pub fn sync((req, sync_req): (HttpRequest, web::Json<SyncRequestBody>)) -> HttpResponse {
     let credentials = match extract_credentials(req) {
         Some(credentials) => credentials,
         None => return invalid_credentials(),
     };
 
-    unimplemented!("Syncing isn't implemented just yet.");
+    match sync::update_server_and_calculate_delta_for_client(
+        &sync_req.last_sync,
+        &sync_req.delta,
+        &credentials,
+    ) {
+        Ok(response_delta) => success(response_delta),
+        Err(err) => something_went_wrong(err),
+    }
 }
