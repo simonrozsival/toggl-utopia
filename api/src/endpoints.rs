@@ -1,39 +1,35 @@
-use actix_web::{web, HttpResponse};
-use serde::Deserialize;
+use actix_web::{web, HttpRequest, HttpResponse};
 
-use crate::models::{Delta, Project, TimeEntry};
-use crate::responses::*;
-use crate::toggl_api;
+use crate::responses::{invalid_credentials, login_succeeded, something_went_wrong};
+use crate::sync::login::fetch_server_state;
 
-#[derive(Deserialize)]
-pub struct Credentials {
-    pub email: String,
-    pub password: String,
+use crate::auth::Credentials;
+use crate::models::Delta;
+
+fn extract_credentials(req: HttpRequest) -> Option<Credentials> {
+    req.headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(Credentials::decode)
 }
 
-pub fn login(credentials: web::Json<Credentials>) -> HttpResponse {
-    let user = match toggl_api::user::login(&credentials.email, &credentials.password) {
-        Ok(user) => user,
-        Err(_) => {
-            return invalid_credentials();
-        }
+pub fn login(req: HttpRequest) -> HttpResponse {
+    let credentials = match extract_credentials(req) {
+        Some(credentials) => credentials,
+        None => return invalid_credentials(),
     };
 
-    let projects: Vec<Project> = match toggl_api::projects::get_all(None, &user.api_token) {
-        Ok(projects) => projects.into_iter().map(Project::from).collect(),
-        Err(error) => return something_went_wrong(error),
+    match fetch_server_state(&credentials) {
+        Ok(delta) => login_succeeded(delta),
+        Err(err) => something_went_wrong(err),
+    }
+}
+
+pub fn sync((req, delta): (HttpRequest, web::Json<Delta>)) -> HttpResponse {
+    let credentials = match extract_credentials(req) {
+        Some(credentials) => credentials,
+        None => return invalid_credentials(),
     };
 
-    let time_entries: Vec<TimeEntry> = match toggl_api::time_entries::get_all(None, &user.api_token)
-    {
-        Ok(time_entries) => time_entries.into_iter().map(TimeEntry::from).collect(),
-        Err(error) => return something_went_wrong(error),
-    };
-
-    let delta = Delta {
-        projects: Some(projects),
-        time_entries: Some(time_entries),
-    };
-
-    login_succeeded(user.api_token, delta)
+    unimplemented!("Syncing isn't implemented just yet.");
 }

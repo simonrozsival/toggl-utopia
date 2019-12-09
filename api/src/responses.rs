@@ -3,7 +3,6 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::models::Delta;
-use crate::toggl_api::models::ApiToken;
 
 #[derive(Serialize)]
 struct Meta {
@@ -29,12 +28,7 @@ where
     error: T,
 }
 
-#[derive(Serialize)]
-struct LoginResult {
-    api_token: ApiToken,
-    data: Delta,
-}
-
+/// Creates a meta structure for the standard body template with the current server time.
 fn meta(error: bool) -> Meta {
     Meta {
         error: error,
@@ -42,6 +36,7 @@ fn meta(error: bool) -> Meta {
     }
 }
 
+/// Wraps the payload in a standard body template with a correct meta values.
 fn ok<T>(payload: T) -> Body<T>
 where
     T: Serialize,
@@ -52,6 +47,7 @@ where
     }
 }
 
+/// Creates a body with correct meta and payload for the given error.
 fn error<T>(code: u64, err: T) -> Body<Error<T>>
 where
     T: Serialize,
@@ -65,11 +61,8 @@ where
     }
 }
 
-pub fn login_succeeded(token: ApiToken, data: Delta) -> HttpResponse {
-    let body = ok(LoginResult {
-        api_token: token,
-        data: data,
-    });
+pub fn login_succeeded(data: Delta) -> HttpResponse {
+    let body = ok(data);
     HttpResponse::Ok().json(body)
 }
 
