@@ -37,17 +37,14 @@ pub fn login(req: HttpRequest) -> HttpResponse {
 
 pub fn sync((req, sync_req): (HttpRequest, web::Json<SyncRequestBody>)) -> HttpResponse {
     let start = Utc::now();
+    let SyncRequestBody { last_sync, delta } = sync_req.into_inner();
 
     let credentials = match extract_credentials(req) {
         Some(credentials) => credentials,
         None => return invalid_credentials(start),
     };
 
-    match sync::update_server_and_calculate_delta_for_client(
-        &sync_req.last_sync,
-        &sync_req.delta,
-        &credentials,
-    ) {
+    match sync::update_server_and_calculate_delta_for_client(last_sync, delta, &credentials) {
         Ok(sync_resolution) => sync_success(sync_resolution, start),
         Err(err) => something_went_wrong(err, start),
     }

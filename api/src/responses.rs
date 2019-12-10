@@ -1,5 +1,5 @@
 use actix_web::HttpResponse;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::models::Delta;

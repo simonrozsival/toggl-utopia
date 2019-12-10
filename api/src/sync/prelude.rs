@@ -1,32 +1,51 @@
 use serde::Serialize;
 
-use crate::models::{Project, TimeEntry, User};
+use crate::models::{Project, Resolve, TimeEntry, User};
+use crate::toggl_api::models::Id;
+use std::cmp::PartialEq;
 
-#[derive(Serialize)]
+#[derive(Serialize, PartialEq, Debug)]
 #[serde(tag = "type")]
-pub enum SyncOutcome<T: Serialize> {
-    Create {
-        entity: T,
-    },
-    Update {
-        id: u64,
-        entity: T,
-    },
-    Delete {
-        entity: T,
-    },
-    Error {
-        entity: T,
-        code: u64,
-        message: String,
-    },
+pub enum ConflictResolution<T: Serialize> {
+    Keep { id: Id },
+    Create { entity: T },
+    Update { id: Id, entity: T },
+    Error { id: Id, code: u64, message: String },
 }
 
 #[derive(Serialize)]
 pub struct SyncResolution {
-    pub user: Option<SyncOutcome<User>>,
-    pub projects: Option<Vec<SyncOutcome<Project>>>,
-    pub time_entries: Option<Vec<SyncOutcome<Project>>>,
+    pub user: Option<ConflictResolution<User>>,
+    pub projects: Option<Vec<ConflictResolution<Project>>>,
+    pub time_entries: Option<Vec<ConflictResolution<Project>>>,
+}
+
+pub fn keep<T: Resolve + Serialize>(entity: &T) -> ConflictResolution<T> {
+    ConflictResolution::<T>::Keep { id: entity.id() }
+}
+
+pub fn create<T: Clone + Resolve + Serialize>(entity: &T) -> ConflictResolution<T> {
+    ConflictResolution::<T>::Create {
+        entity: entity.clone(),
+    }
+}
+
+pub fn update<T: Clone + Resolve + Serialize>(
+    original_id: Id,
+    entity: &T,
+) -> ConflictResolution<T> {
+    ConflictResolution::<T>::Update {
+        id: original_id,
+        entity: entity.clone(),
+    }
+}
+
+pub fn error<T: Resolve + Serialize>(entity: &T, message: String) -> ConflictResolution<T> {
+    ConflictResolution::<T>::Error {
+        code: 0,
+        id: entity.id(),
+        message: message,
+    }
 }
 
 impl SyncResolution {

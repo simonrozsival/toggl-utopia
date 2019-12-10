@@ -1,8 +1,8 @@
-use super::prelude::{SyncOutcome, SyncResolution};
+use super::prelude::{ConflictResolution, SyncResolution};
 use crate::models::Resolve;
 use crate::toggl_api::models::Id;
 use serde::Serialize;
-use SyncOutcome::{Create, Delete, Error, Update};
+use ConflictResolution::{Create, Error, Keep, Update};
 
 pub fn share_entities(a: &SyncResolution, b: &SyncResolution) -> bool {
     entities_match(&a.user, &b.user)
@@ -10,7 +10,7 @@ pub fn share_entities(a: &SyncResolution, b: &SyncResolution) -> bool {
         || overlap(&a.time_entries, &b.time_entries)
 }
 
-fn entities_match<T>(a: &Option<SyncOutcome<T>>, b: &Option<SyncOutcome<T>>) -> bool
+fn entities_match<T>(a: &Option<ConflictResolution<T>>, b: &Option<ConflictResolution<T>>) -> bool
 where
     T: Resolve + Serialize,
 {
@@ -20,7 +20,10 @@ where
     }
 }
 
-fn overlap<T>(a: &Option<Vec<SyncOutcome<T>>>, b: &Option<Vec<SyncOutcome<T>>>) -> bool
+fn overlap<T>(
+    a: &Option<Vec<ConflictResolution<T>>>,
+    b: &Option<Vec<ConflictResolution<T>>>,
+) -> bool
 where
     T: Resolve + Serialize,
 {
@@ -33,18 +36,18 @@ where
     }
 }
 
-fn outcome_id<T>(outcome: &SyncOutcome<T>) -> Id
+fn outcome_id<T>(outcome: &ConflictResolution<T>) -> Id
 where
     T: Resolve + Serialize,
 {
     match outcome {
+        Keep { id } => *id,
         Create { entity } => entity.id(),
         Update { id: _, entity } => entity.id(),
-        Delete { entity } => entity.id(),
         Error {
-            entity,
+            id,
             code: _,
             message: _,
-        } => entity.id(),
+        } => *id,
     }
 }
