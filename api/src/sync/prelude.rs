@@ -15,24 +15,24 @@ pub enum ConflictResolution<T: Serialize> {
 #[derive(Serialize)]
 pub struct SyncResolution {
     pub user: Option<ConflictResolution<User>>,
-    pub projects: Option<Vec<ConflictResolution<Project>>>,
-    pub time_entries: Option<Vec<ConflictResolution<TimeEntry>>>,
+    pub projects: Vec<ConflictResolution<Project>>,
+    pub time_entries: Vec<ConflictResolution<TimeEntry>>,
 }
 
-pub fn create<T: Clone + Entity + Serialize>(entity: &T) -> ConflictResolution<T> {
+pub fn create<T: Entity>(entity: &T) -> ConflictResolution<T> {
     ConflictResolution::<T>::Create {
         entity: entity.clone(),
     }
 }
 
-pub fn update<T: Clone + Entity + Serialize>(original_id: Id, entity: &T) -> ConflictResolution<T> {
+pub fn update<T: Entity>(original_id: Id, entity: &T) -> ConflictResolution<T> {
     ConflictResolution::<T>::Update {
         id: original_id,
         entity: entity.clone(),
     }
 }
 
-pub fn error<T: Entity + Serialize>(entity: &T, message: String) -> ConflictResolution<T> {
+pub fn error<T: Entity>(entity: &T, message: String) -> ConflictResolution<T> {
     ConflictResolution::<T>::Error {
         code: 0,
         id: entity.id(),

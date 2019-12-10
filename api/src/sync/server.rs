@@ -37,18 +37,18 @@ pub fn apply_changes(resolution: SyncResolution, credentials: &Credentials) -> S
         unimplemented!("We don't support updating projects at this moment.");
     }
 
-    if resolution.projects.is_some() {
+    if !resolution.projects.is_empty() {
         unimplemented!("We don't support updating projects at this moment.");
     }
 
-    if let Some(time_entries) = resolution.time_entries {
+    if !resolution.time_entries.is_empty() {
         // todo: update the time entries
         // don't forget to correctly mark how to swap the IDs correctly
     }
 
     SyncResolution {
         user: None,
-        projects: None,
-        time_entries: None,
+        projects: vec![],
+        time_entries: vec![],
     }
 }

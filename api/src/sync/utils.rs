@@ -20,20 +20,12 @@ where
     }
 }
 
-fn overlap<T>(
-    a: &Option<Vec<ConflictResolution<T>>>,
-    b: &Option<Vec<ConflictResolution<T>>>,
-) -> bool
+fn overlap<T>(x: &Vec<ConflictResolution<T>>, y: &Vec<ConflictResolution<T>>) -> bool
 where
     T: Entity + Serialize,
 {
-    match (a, b) {
-        (Some(x), Some(y)) => {
-            let ids_x = x.iter().map(outcome_id).collect::<Vec<_>>();
-            y.iter().map(outcome_id).any(|id| ids_x.contains(&id))
-        }
-        _ => false,
-    }
+    let ids_x = x.iter().map(outcome_id).collect::<Vec<_>>();
+    y.iter().map(outcome_id).any(|id| ids_x.contains(&id))
 }
 
 fn outcome_id<T>(outcome: &ConflictResolution<T>) -> Id

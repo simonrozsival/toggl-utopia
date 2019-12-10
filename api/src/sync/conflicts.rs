@@ -39,18 +39,15 @@ fn form_pairs<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<(Option<T>, Opti
     let mut pairs: Vec<(Option<T>, Option<T>)> = Vec::new();
 
     for client_entity in client.iter() {
-        let id = server_entities
+        let maybe_server_entity = server_entities
             .get(&client_entity.id())
-            .map(|server_entity| {
-                let c = client_entity.clone();
-                let s = server_entity.clone();
-                pairs.push((Some(c), Some(s)));
-                client_entity.id()
-            });
+            .map(|server_entity| server_entity.clone());
 
-        if let Some(id) = id {
-            server_entities.remove(&id);
+        if maybe_server_entity.is_some() {
+            server_entities.remove(&client_entity.id());
         }
+
+        pairs.push((Some(client_entity.clone()), maybe_server_entity));
     }
 
     for (_, server_entity) in server_entities.iter() {
@@ -63,37 +60,39 @@ fn form_pairs<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<(Option<T>, Opti
 fn resolve_many<T: Entity>(
     client: Option<Vec<T>>,
     server: Option<Vec<T>>,
-) -> (
-    Option<Vec<ConflictResolution<T>>>,
-    Option<Vec<ConflictResolution<T>>>,
-) {
-    let pairs = match (client, server) {
-        (None, None) => return (None, None),
-        (Some(c), None) => form_pairs(c, vec![]),
-        (None, Some(s)) => form_pairs(vec![], s),
-        (Some(c), Some(s)) => form_pairs(c, s),
-    };
+) -> (Vec<ConflictResolution<T>>, Vec<ConflictResolution<T>>) {
+    let (resolved_for_client, resolved_for_server): (
+        Vec<Option<ConflictResolution<T>>>,
+        Vec<Option<ConflictResolution<T>>>,
+    ) = form_pairs(client.unwrap_or_default(), server.unwrap_or_default())
+        .into_iter()
+        .map(|(c, s)| resolve_single(c.clone(), s.clone()))
+        .unzip();
 
-    unimplemented!("Not implemented yet.");
+    (
+        resolved_for_client.into_iter().filter_map(|x| x).collect(),
+        resolved_for_server.into_iter().filter_map(|x| x).collect(),
+    )
 }
 
 pub fn resolve(client: Delta, server: Delta) -> (SyncResolution, SyncResolution) {
     let (client_user, server_user) = resolve_single(client.user, server.user);
     let (client_projects, server_projects) = resolve_many(client.projects, server.projects);
+    let (client_time_entries, server_time_entries) =
+        resolve_many(client.time_entries, server.time_entries); // todo: this needs additionally resolving two running TEs!
 
-    let client_resolution = SyncResolution {
-        user: client_user,
-        projects: client_projects,
-        time_entries: None,
-    };
-
-    let server_resolution = SyncResolution {
-        user: server_user,
-        projects: server_projects,
-        time_entries: None,
-    };
-
-    (client_resolution, server_resolution)
+    (
+        SyncResolution {
+            user: client_user,
+            projects: client_projects,
+            time_entries: client_time_entries,
+        },
+        SyncResolution {
+            user: server_user,
+            projects: server_projects,
+            time_entries: server_time_entries,
+        },
+    )
 }
 
 #[cfg(test)]
@@ -242,7 +241,7 @@ mod tests {
         }
 
         #[test]
-        fn forms_pairs_for_between_all_entities() {
+        fn forms_pairs_for_between_a_pair_of_entities() {
             let client = vec![proj(1)];
             let server = vec![proj(1)];
 
@@ -251,6 +250,47 @@ mod tests {
             assert_eq!(pairs.len(), 1);
             assert_eq!(pairs[0].0.is_some(), true);
             assert_eq!(pairs[0].1.is_some(), true);
+        }
+
+        #[test]
+        fn forms_pairs_for_between_all_entities() {
+            let client = vec![proj(1), proj(2), proj(3)];
+            let server = vec![proj(3), proj(2), proj(1)];
+
+            let pairs = form_pairs(client, server);
+
+            assert_eq!(pairs.len(), 3);
+            assert_eq!(
+                pairs
+                    .iter()
+                    .all(|pair| pair.0.is_some() && pair.1.is_some()),
+                true
+            );
+            assert_eq!(
+                pairs
+                    .iter()
+                    .all(|pair| pair.0.as_ref().unwrap().id == pair.1.as_ref().unwrap().id),
+                true
+            );
+        }
+
+        #[test]
+        fn if_there_is_no_counterpar_then_it_should_be_none() {
+            let client = vec![proj(1), proj(2)];
+            let server = vec![proj(2), proj(3)];
+
+            let pairs = form_pairs(client, server);
+
+            assert_eq!(pairs.len(), 3);
+            // first the client
+            assert_eq!(pairs[0].0.is_some(), true);
+            assert_eq!(pairs[0].1.is_none(), true);
+            // then the client+server pair
+            assert_eq!(pairs[1].0.is_some(), true);
+            assert_eq!(pairs[1].1.is_some(), true);
+            // then the lonely entity on the server
+            assert_eq!(pairs[2].0.is_none(), true);
+            assert_eq!(pairs[2].1.is_some(), true);
         }
     }
 }
