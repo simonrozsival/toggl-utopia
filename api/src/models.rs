@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::toggl_api::models::{ApiToken, ProjectId, TimeEntryId, UserId};
+use crate::toggl_api::models::{ApiToken, Id};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct User {
-    pub id: UserId,
+    pub id: Id,
     pub fullname: String,
     pub api_token: ApiToken,
     pub at: DateTime<Utc>,
@@ -13,7 +13,7 @@ pub struct User {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Project {
-    pub id: ProjectId,
+    pub id: Id,
     pub name: String,
     pub color: String,
     pub active: bool,
@@ -23,9 +23,9 @@ pub struct Project {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TimeEntry {
-    pub id: TimeEntryId,
+    pub id: Id,
     pub description: String,
-    pub project_id: Option<ProjectId>,
+    pub project_id: Option<Id>,
     pub start: DateTime<Utc>,
     pub duration: Option<u64>,
     pub at: DateTime<Utc>,
@@ -39,23 +39,23 @@ pub struct Delta {
     pub time_entries: Option<Vec<TimeEntry>>,
 }
 
-pub trait Id {
+pub trait Resolve {
     fn id(self: &Self) -> u64;
 }
 
-impl Id for User {
+impl Resolve for User {
     fn id(self: &Self) -> u64 {
         self.id
     }
 }
 
-impl Id for Project {
+impl Resolve for Project {
     fn id(self: &Self) -> u64 {
         self.id
     }
 }
 
-impl Id for TimeEntry {
+impl Resolve for TimeEntry {
     fn id(self: &Self) -> u64 {
         self.id
     }
@@ -72,14 +72,5 @@ impl Delta {
             (None, Some(y)) => Some(y),
             (Some(x), Some(y)) => Some([x, y].concat()),
         }
-    }
-
-    pub fn merge(client: &Delta, server: &Delta) -> Delta {
-        // Delta {
-        //     user: client.user.or(server.user), // I must think this one through later
-        //     projects: Delta::merge_optional_vectors(client.projects, server.projects),
-        //     time_entries: Delta::merge_optional_vectors(client.time_entries, server.time_entries),
-        // }
-        unimplemented!()
     }
 }

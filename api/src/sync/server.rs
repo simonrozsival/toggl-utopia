@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 
 use crate::auth::Credentials;
 use crate::models::{Delta, Project, TimeEntry, User};
+use crate::sync::prelude::SyncResolution;
 use crate::toggl_api;
 
 pub fn fetch_changes_since(
@@ -27,6 +28,27 @@ pub fn fetch_changes_since(
     })
 }
 
-pub fn overwrite_with(delta: &Delta, credentials: &Credentials) -> Delta {
-    unimplemented!()
+pub fn apply_changes(resolution: &SyncResolution, credentials: &Credentials) -> SyncResolution {
+    // Important note: we don't support creating projects at the moment.
+    // If we did, we would have to update the old IDs in the `time_entries` (assuming
+    // the entities would be linked by some client-assigned IDs, such as negative numbers).
+
+    if resolution.user.is_some() {
+        unimplemented!("We don't support updating projects at this moment.");
+    }
+
+    if resolution.projects.is_some() {
+        unimplemented!("We don't support updating projects at this moment.");
+    }
+
+    if let Some(time_entries) = &resolution.time_entries {
+        // todo: update the time entries
+        // don't forget to correctly mark how to swap the IDs correctly
+    }
+
+    SyncResolution {
+        user: None,
+        projects: None,
+        time_entries: None,
+    }
 }

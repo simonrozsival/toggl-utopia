@@ -2,7 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::responses::{invalid_credentials, something_went_wrong, success};
+use crate::responses::{invalid_credentials, snapshot_success, something_went_wrong, sync_success};
 use crate::sync;
 
 use crate::auth::Credentials;
@@ -28,7 +28,7 @@ pub fn login(req: HttpRequest) -> HttpResponse {
     };
 
     match sync::fetch_snapshot(&credentials) {
-        Ok(delta) => success(delta),
+        Ok(delta) => snapshot_success(delta),
         Err(err) => something_went_wrong(err),
     }
 }
@@ -44,7 +44,7 @@ pub fn sync((req, sync_req): (HttpRequest, web::Json<SyncRequestBody>)) -> HttpR
         &sync_req.delta,
         &credentials,
     ) {
-        Ok(response_delta) => success(response_delta),
+        Ok(sync_resolution) => sync_success(sync_resolution),
         Err(err) => something_went_wrong(err),
     }
 }

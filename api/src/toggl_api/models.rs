@@ -4,16 +4,13 @@ use std::convert::Into;
 
 use crate::models::{Project as UtopiaProject, TimeEntry as UtopiaTimeEntry, User as UtopiaUser};
 
-pub type UserId = u64;
-pub type WorkspaceId = u64;
-pub type ProjectId = u64;
-pub type TimeEntryId = u64;
+pub type Id = u64;
 pub type ApiToken = String;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
-    pub id: UserId,
-    pub default_workspace_id: WorkspaceId,
+    pub id: Id,
+    pub default_workspace_id: Id,
     pub fullname: String,
     pub api_token: ApiToken,
     pub at: DateTime<Utc>,
@@ -21,8 +18,8 @@ pub struct User {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Project {
-    pub id: ProjectId,
-    pub workspace_id: WorkspaceId,
+    pub id: Id,
+    pub workspace_id: Id,
     pub name: String,
     pub color: String,
     pub active: bool,
@@ -32,10 +29,10 @@ pub struct Project {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TimeEntry {
-    pub id: TimeEntryId,
-    pub workspace_id: WorkspaceId,
+    pub id: Id,
+    pub workspace_id: Id,
     pub description: String,
-    pub project_id: Option<ProjectId>,
+    pub project_id: Option<Id>,
     pub start: DateTime<Utc>,
     pub duration: i64,
     pub at: DateTime<Utc>,
