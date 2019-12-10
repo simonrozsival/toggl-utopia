@@ -40,13 +40,13 @@ pub struct Delta {
     pub time_entries: Option<Vec<TimeEntry>>,
 }
 
-pub trait Resolve {
+pub trait Entity: Clone + Serialize {
     fn id(&self) -> u64;
     fn is_deleted(&self) -> bool;
     fn last_update(&self) -> DateTime<Utc>;
 }
 
-impl Resolve for User {
+impl Entity for User {
     fn id(&self) -> u64 {
         self.id
     }
@@ -60,7 +60,7 @@ impl Resolve for User {
     }
 }
 
-impl Resolve for Project {
+impl Entity for Project {
     fn id(&self) -> u64 {
         self.id
     }
@@ -74,7 +74,7 @@ impl Resolve for Project {
     }
 }
 
-impl Resolve for TimeEntry {
+impl Entity for TimeEntry {
     fn id(&self) -> u64 {
         self.id
     }
