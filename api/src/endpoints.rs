@@ -22,21 +22,25 @@ fn extract_credentials(req: HttpRequest) -> Option<Credentials> {
 }
 
 pub fn login(req: HttpRequest) -> HttpResponse {
+    let start = Utc::now();
+
     let credentials = match extract_credentials(req) {
         Some(credentials) => credentials,
-        None => return invalid_credentials(),
+        None => return invalid_credentials(start),
     };
 
     match sync::fetch_snapshot(&credentials) {
-        Ok(delta) => snapshot_success(delta),
-        Err(err) => something_went_wrong(err),
+        Ok(delta) => snapshot_success(delta, start),
+        Err(err) => something_went_wrong(err, start),
     }
 }
 
 pub fn sync((req, sync_req): (HttpRequest, web::Json<SyncRequestBody>)) -> HttpResponse {
+    let start = Utc::now();
+
     let credentials = match extract_credentials(req) {
         Some(credentials) => credentials,
-        None => return invalid_credentials(),
+        None => return invalid_credentials(start),
     };
 
     match sync::update_server_and_calculate_delta_for_client(
@@ -44,7 +48,7 @@ pub fn sync((req, sync_req): (HttpRequest, web::Json<SyncRequestBody>)) -> HttpR
         &sync_req.delta,
         &credentials,
     ) {
-        Ok(sync_resolution) => sync_success(sync_resolution),
-        Err(err) => something_went_wrong(err),
+        Ok(sync_resolution) => sync_success(sync_resolution, start),
+        Err(err) => something_went_wrong(err, start),
     }
 }
