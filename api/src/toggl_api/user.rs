@@ -1,14 +1,11 @@
 use super::endpoints;
 use super::models::User;
-use crate::auth::Credentials;
 
-pub fn get(credentials: &Credentials) -> Result<User, reqwest::Error> {
-    let (username, password) = credentials.into_basic();
-    let user = reqwest::Client::new()
-        .get(&endpoints::me())
-        .basic_auth(username, Some(password))
-        .send()?
-        .json::<User>()?;
+use crate::toggl_api::TogglApi;
 
-    Ok(user)
+impl TogglApi {
+    pub fn fetch_user(&self) -> Result<User, reqwest::Error> {
+        let user = self.req(endpoints::me()).send()?.json::<User>()?;
+        Ok(user)
+    }
 }

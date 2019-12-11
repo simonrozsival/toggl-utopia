@@ -2,19 +2,18 @@ use chrono::{DateTime, Utc};
 
 use super::endpoints;
 use super::models::Project;
+use crate::toggl_api::TogglApi;
 
-use crate::auth::Credentials;
+impl TogglApi {
+    pub fn fetch_projects(
+        &self,
+        since: Option<DateTime<Utc>>,
+    ) -> Result<Vec<Project>, reqwest::Error> {
+        let projects = self
+            .req(endpoints::projects(since))
+            .send()?
+            .json::<Vec<Project>>()?;
 
-pub fn get_all(
-    since: Option<DateTime<Utc>>,
-    credentials: &Credentials,
-) -> Result<Vec<Project>, reqwest::Error> {
-    let (username, password) = credentials.into_basic();
-    let projects = reqwest::Client::new()
-        .get(&endpoints::projects(since))
-        .basic_auth(username, Some(password))
-        .send()?
-        .json::<Vec<Project>>()?;
-
-    Ok(projects)
+        Ok(projects)
+    }
 }

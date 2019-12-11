@@ -42,3 +42,7 @@ where
         } => *id,
     }
 }
+
+pub fn just_some<T>(data: Vec<Option<T>>) -> Vec<T> {
+    data.into_iter().filter_map(|x| x).collect()
+}

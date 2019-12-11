@@ -7,6 +7,7 @@ use crate::toggl_api::models::{ApiToken, Id};
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct User {
     pub id: Id,
+    pub default_workspace_id: Id,
     pub fullname: String,
     pub api_token: ApiToken,
     pub at: DateTime<Utc>,
@@ -15,6 +16,7 @@ pub struct User {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct Project {
     pub id: Id,
+    pub workspace_id: Id,
     pub name: String,
     pub color: String,
     pub active: bool,
@@ -25,6 +27,7 @@ pub struct Project {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct TimeEntry {
     pub id: Id,
+    pub workspace_id: Id,
     pub description: String,
     pub project_id: Option<Id>,
     pub start: DateTime<Utc>,
@@ -41,13 +44,13 @@ pub struct Delta {
 }
 
 pub trait Entity: Clone + Serialize {
-    fn id(&self) -> u64;
+    fn id(&self) -> Id;
     fn is_deleted(&self) -> bool;
     fn last_update(&self) -> DateTime<Utc>;
 }
 
 impl Entity for User {
-    fn id(&self) -> u64 {
+    fn id(&self) -> Id {
         self.id
     }
 
@@ -61,7 +64,7 @@ impl Entity for User {
 }
 
 impl Entity for Project {
-    fn id(&self) -> u64 {
+    fn id(&self) -> Id {
         self.id
     }
 
@@ -75,7 +78,7 @@ impl Entity for Project {
 }
 
 impl Entity for TimeEntry {
-    fn id(&self) -> u64 {
+    fn id(&self) -> Id {
         self.id
     }
 
@@ -85,19 +88,5 @@ impl Entity for TimeEntry {
 
     fn last_update(&self) -> DateTime<Utc> {
         self.at
-    }
-}
-
-impl Delta {
-    fn merge_optional_vectors<T>(client: Option<Vec<T>>, server: Option<Vec<T>>) -> Option<Vec<T>>
-    where
-        T: Clone,
-    {
-        match (client, server) {
-            (None, None) => None,
-            (Some(x), None) => Some(x),
-            (None, Some(y)) => Some(y),
-            (Some(x), Some(y)) => Some([x, y].concat()),
-        }
     }
 }

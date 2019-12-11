@@ -2,18 +2,39 @@ use chrono::{DateTime, Utc};
 
 use super::endpoints;
 use super::models::TimeEntry;
-use crate::auth::Credentials;
 
-pub fn get_all(
-    since: Option<DateTime<Utc>>,
-    credentials: &Credentials,
-) -> Result<Vec<TimeEntry>, reqwest::Error> {
-    let (username, password) = credentials.into_basic();
-    let time_entries = reqwest::Client::new()
-        .get(&endpoints::time_entries(since))
-        .basic_auth(username, Some(password))
-        .send()?
-        .json::<Vec<TimeEntry>>()?;
+use crate::toggl_api::TogglApi;
 
-    Ok(time_entries)
+impl TogglApi {
+    pub fn fetch_time_entries(
+        &self,
+        since: Option<DateTime<Utc>>,
+    ) -> Result<Vec<TimeEntry>, reqwest::Error> {
+        let time_entries = self
+            .req(endpoints::time_entries(since))
+            .send()?
+            .json::<Vec<TimeEntry>>()?;
+
+        Ok(time_entries)
+    }
+
+    pub fn create_time_entry(&self, te: &TimeEntry) -> Result<TimeEntry, reqwest::Error> {
+        let time_entry = self
+            .req(endpoints::create_time_entry(&te.workspace_id))
+            .json(&te)
+            .send()?
+            .json::<TimeEntry>()?;
+
+        Ok(time_entry)
+    }
+
+    pub fn update_time_entry(&self, te: &TimeEntry) -> Result<TimeEntry, reqwest::Error> {
+        let time_entry = self
+            .req(endpoints::update_time_entry(&te.workspace_id))
+            .json(&te)
+            .send()?
+            .json::<TimeEntry>()?;
+
+        Ok(time_entry)
+    }
 }

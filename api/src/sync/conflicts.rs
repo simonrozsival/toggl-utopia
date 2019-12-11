@@ -1,11 +1,11 @@
 use super::prelude::{create, update, ConflictResolution, SyncResolution};
+use super::utils::just_some;
 use crate::models::{Delta, Entity};
 use crate::toggl_api::models::Id;
 
-fn prefer_newer<T: Entity>(
-    client: T,
-    server: T,
-) -> (Option<ConflictResolution<T>>, Option<ConflictResolution<T>>) {
+type Pair<T> = (T, T);
+
+fn prefer_newer<T: Entity>(client: T, server: T) -> Pair<Option<ConflictResolution<T>>> {
     if client.last_update() > server.last_update() {
         (None, Some(update(server.id(), &client)))
     } else {
@@ -16,7 +16,7 @@ fn prefer_newer<T: Entity>(
 fn resolve_single<T: Entity>(
     client: Option<T>,
     server: Option<T>,
-) -> (Option<ConflictResolution<T>>, Option<ConflictResolution<T>>) {
+) -> Pair<Option<ConflictResolution<T>>> {
     match (client, server) {
         (None,    None)     => (None, None),
         (Some(c), None)     => (None, Some(create(&c))),
@@ -27,7 +27,7 @@ fn resolve_single<T: Entity>(
     }
 }
 
-fn form_pairs<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<(Option<T>, Option<T>)> {
+fn pair<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<Pair<Option<T>>> {
     use std::collections::HashMap;
 
     let mut server_entities: HashMap<Id, T> =
@@ -60,22 +60,17 @@ fn form_pairs<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<(Option<T>, Opti
 fn resolve_many<T: Entity>(
     client: Option<Vec<T>>,
     server: Option<Vec<T>>,
-) -> (Vec<ConflictResolution<T>>, Vec<ConflictResolution<T>>) {
-    let (resolved_for_client, resolved_for_server): (
-        Vec<Option<ConflictResolution<T>>>,
-        Vec<Option<ConflictResolution<T>>>,
-    ) = form_pairs(client.unwrap_or_default(), server.unwrap_or_default())
-        .into_iter()
-        .map(|(c, s)| resolve_single(c.clone(), s.clone()))
-        .unzip();
+) -> Pair<Vec<ConflictResolution<T>>> {
+    let (for_client, for_server): Pair<Vec<Option<ConflictResolution<T>>>> =
+        pair(client.unwrap_or_default(), server.unwrap_or_default())
+            .into_iter()
+            .map(|(c, s)| resolve_single(c.clone(), s.clone()))
+            .unzip();
 
-    (
-        resolved_for_client.into_iter().filter_map(|x| x).collect(),
-        resolved_for_server.into_iter().filter_map(|x| x).collect(),
-    )
+    (just_some(for_client), just_some(for_server))
 }
 
-pub fn resolve(client: Delta, server: Delta) -> (SyncResolution, SyncResolution) {
+pub fn resolve(client: Delta, server: Delta) -> Pair<SyncResolution> {
     let (client_user, server_user) = resolve_single(client.user, server.user);
     let (client_projects, server_projects) = resolve_many(client.projects, server.projects);
     let (client_time_entries, server_time_entries) =
@@ -104,6 +99,7 @@ mod tests {
     fn create_project(id: Id, at: DateTime<Utc>, deleted_at: Option<DateTime<Utc>>) -> Project {
         Project {
             id,
+            workspace_id: 0,
             name: "ABC".to_string(),
             color: "#ff0000".to_string(),
             active: true,
@@ -223,8 +219,8 @@ mod tests {
         }
     }
 
-    mod form_pairs {
-        use super::super::form_pairs;
+    mod pair {
+        use super::super::pair;
         use crate::models::Project;
         use crate::toggl_api::models::Id;
         use chrono::{TimeZone, Utc};
@@ -232,6 +228,7 @@ mod tests {
         fn proj(id: Id) -> Project {
             Project {
                 id,
+                workspace_id: 0,
                 name: "ABC".to_string(),
                 color: "#ff0000".to_string(),
                 active: true,
@@ -245,11 +242,11 @@ mod tests {
             let client = vec![proj(1)];
             let server = vec![proj(1)];
 
-            let pairs = form_pairs(client, server);
+            let pairs = pair(client, server);
 
             assert_eq!(pairs.len(), 1);
-            assert_eq!(pairs[0].0.is_some(), true);
-            assert_eq!(pairs[0].1.is_some(), true);
+            assert!(pairs[0].0.is_some());
+            assert!(pairs[0].1.is_some());
         }
 
         #[test]
@@ -257,7 +254,7 @@ mod tests {
             let client = vec![proj(1), proj(2), proj(3)];
             let server = vec![proj(3), proj(2), proj(1)];
 
-            let pairs = form_pairs(client, server);
+            let pairs = pair(client, server);
 
             assert_eq!(pairs.len(), 3);
             assert_eq!(
@@ -279,18 +276,18 @@ mod tests {
             let client = vec![proj(1), proj(2)];
             let server = vec![proj(2), proj(3)];
 
-            let pairs = form_pairs(client, server);
+            let pairs = pair(client, server);
 
             assert_eq!(pairs.len(), 3);
             // first the client
-            assert_eq!(pairs[0].0.is_some(), true);
-            assert_eq!(pairs[0].1.is_none(), true);
+            assert!(pairs[0].0.is_some());
+            assert!(pairs[0].1.is_none());
             // then the client+server pair
-            assert_eq!(pairs[1].0.is_some(), true);
-            assert_eq!(pairs[1].1.is_some(), true);
+            assert!(pairs[1].0.is_some());
+            assert!(pairs[1].1.is_some());
             // then the lonely entity on the server
-            assert_eq!(pairs[2].0.is_none(), true);
-            assert_eq!(pairs[2].1.is_some(), true);
+            assert!(pairs[2].0.is_none());
+            assert!(pairs[2].1.is_some());
         }
     }
 }
