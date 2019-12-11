@@ -20,7 +20,7 @@ impl TogglApi {
 
     pub fn create_time_entry(&self, te: TimeEntry) -> Result<TimeEntry, reqwest::Error> {
         let modified_te = TimeEntry {
-            created_with: Some("UtoAPI".to_string()), // this is the thing that I need to change :-/
+            created_with: Some("UtoAPI".to_string()),
             ..te
         };
 
