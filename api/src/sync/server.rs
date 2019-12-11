@@ -2,9 +2,9 @@ use chrono::{DateTime, Utc};
 
 use crate::models::{Delta, Project, TimeEntry, User};
 use crate::sync::prelude::{
-    error, update, ConflictResolution,
+    created, failed, ConflictResolution,
     ConflictResolution::{Create, Update},
-    SyncResolution,
+    ConflictResolutionResults, SyncOutcome, SyncResult,
 };
 use crate::toggl_api::models::TimeEntry as TogglTimeEntry;
 use crate::toggl_api::TogglApi;
@@ -34,37 +34,36 @@ pub fn fetch_changes_since(
     })
 }
 
-fn create_time_entry(te: &TimeEntry, api: &TogglApi) -> Option<ConflictResolution<TimeEntry>> {
+fn create_time_entry(te: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
     match api.create_time_entry(&TogglTimeEntry::from(&te)) {
-        Ok(entity) => Some(update(te.id, &entity.into())),
-        Err(err) => Some(error(&te, format!("{:?}", err))),
+        Ok(entity) => Some(created(te.id, entity.into())),
+        Err(err) => Some(failed(te.id, format!("{:?}", err))),
     }
 }
 
-fn update_time_entry(te: &TimeEntry, api: &TogglApi) -> Option<ConflictResolution<TimeEntry>> {
+fn update_time_entry(te: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
     match api.update_time_entry(&TogglTimeEntry::from(&te)) {
         Ok(_) => None,
-        Err(err) => Some(error(&te, format!("{:?}", err))),
+        Err(err) => Some(failed(te.id, format!("{:?}", err))),
     }
 }
 
 fn push_time_entry(
     change: &ConflictResolution<TimeEntry>,
     api: &TogglApi,
-) -> Option<ConflictResolution<TimeEntry>> {
+) -> Option<SyncResult<TimeEntry>> {
     match change {
-        Create { entity } => create_time_entry(&entity.clone().into(), &api),
-        Update { entity, .. } => update_time_entry(&entity.clone().into(), &api),
-        _ => {
-            panic!("This should not happen, only Create and Update are supported for time entries!")
-        }
+        Create(entity) => create_time_entry(entity.into(), &api),
+        Update(entity) => update_time_entry(entity.into(), &api),
+        ConflictResolution::<TimeEntry>::Ignore => None,
     }
 }
 
-pub fn apply_changes(resolution: SyncResolution, api: &TogglApi) -> SyncResolution {
+pub fn apply_changes(resolution: ConflictResolutionResults, api: &TogglApi) -> SyncOutcome {
     if resolution.user.is_some() {
         unimplemented!("We don't support updating projects at this moment.");
     }
+
     if !resolution.projects.is_empty() {
         // Important note: we don't support creating projects at the moment.
         // If we did, we would have to update the old IDs in the `time_entries` (assuming
@@ -79,7 +78,7 @@ pub fn apply_changes(resolution: SyncResolution, api: &TogglApi) -> SyncResoluti
         }
     }
 
-    SyncResolution {
+    SyncOutcome {
         user: None,
         projects: vec![],
         time_entries,

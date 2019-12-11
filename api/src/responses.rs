@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::models::Delta;
-use crate::sync::prelude::SyncResolution;
+use crate::sync::prelude::SyncOutcome;
 
 #[derive(Serialize)]
 struct Meta {
@@ -69,7 +69,7 @@ pub fn snapshot_success(data: Delta, start: DateTime<Utc>) -> HttpResponse {
     HttpResponse::Ok().json(body)
 }
 
-pub fn sync_success(data: SyncResolution, start: DateTime<Utc>) -> HttpResponse {
+pub fn sync_success(data: SyncOutcome, start: DateTime<Utc>) -> HttpResponse {
     let body = ok(data, start);
     HttpResponse::Ok().json(body)
 }
