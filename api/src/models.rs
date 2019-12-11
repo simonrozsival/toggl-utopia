@@ -36,6 +36,12 @@ pub struct TimeEntry {
     pub server_deleted_at: Option<DateTime<Utc>>,
 }
 
+impl TimeEntry {
+    pub fn is_running(&self) -> bool {
+        self.duration.is_none()
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone, Default)]
 pub struct Delta {
     pub user: Option<User>,

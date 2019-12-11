@@ -31,6 +31,11 @@ pub fn fetch_changes_since(
     })
 }
 
+pub fn currently_running_time_entry(api: &TogglApi) -> Result<Option<TimeEntry>, reqwest::Error> {
+    let maybe_te = api.fetch_current_running_time_entry()?;
+    Ok(maybe_te.map(|te| te.into()))
+}
+
 fn create_time_entry(te: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
     match api.create_time_entry(TogglTimeEntry::from(&te)) {
         Ok(entity) => Some(created(te.id, entity.into())),
