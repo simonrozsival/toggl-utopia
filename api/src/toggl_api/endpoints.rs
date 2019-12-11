@@ -50,9 +50,9 @@ pub fn create_time_entry(workspace_id: &Id) -> Endpoint {
     }
 }
 
-pub fn update_time_entry(workspace_id: &Id) -> Endpoint {
+pub fn update_time_entry(id: &Id) -> Endpoint {
     Endpoint {
-        url: format!("{}/workspaces/{}/time_entries", BASE_URL, workspace_id),
+        url: format!("{}/time_entries/{}", BASE_URL, id),
         method: reqwest::Method::PUT,
     }
 }

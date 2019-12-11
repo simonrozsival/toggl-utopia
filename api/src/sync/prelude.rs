@@ -1,38 +1,8 @@
 use serde::Serialize;
 
-use crate::models::{Entity, Project, TimeEntry, User};
+use crate::models::{Delta, Entity, Project, TimeEntry, User};
 use crate::toggl_api::models::Id;
 use std::cmp::PartialEq;
-
-#[derive(Serialize, PartialEq, Debug, Clone)]
-pub enum ConflictResolution<T: Entity> {
-    Ignore,
-    Create(T),
-    Update(T),
-}
-
-impl<T: Entity> ConflictResolution<T> {
-    pub fn is_ignore(&self) -> bool {
-        match self {
-            ConflictResolution::<T>::Ignore => true,
-            _ => false,
-        }
-    }
-
-    pub fn to_option(self) -> Option<ConflictResolution<T>> {
-        match self {
-            ConflictResolution::<T>::Ignore => None,
-            _ => Some(self),
-        }
-    }
-}
-
-#[derive(Serialize, PartialEq, Debug, Clone)]
-pub struct ConflictResolutionResults {
-    pub user: Option<ConflictResolution<User>>,
-    pub projects: Vec<ConflictResolution<Project>>,
-    pub time_entries: Vec<ConflictResolution<TimeEntry>>,
-}
 
 #[derive(Serialize, PartialEq, Debug, Clone)]
 pub enum SyncResult<T: Entity> {
@@ -70,12 +40,8 @@ pub fn failed<T: Entity>(client_assigned_id: Id, message: String) -> SyncResult<
 }
 
 impl<T: Entity> SyncResult<T> {
-    pub fn convert(conflict_resolution: ConflictResolution<T>) -> SyncResult<T> {
-        match conflict_resolution {
-            ConflictResolution::<T>::Create(entity) => SyncResult::<T>::Changed { entity },
-            ConflictResolution::<T>::Update(entity) => SyncResult::<T>::Changed { entity },
-            ConflictResolution::<T>::Ignore => panic!("'Ignore' cannot be a sync result."),
-        }
+    pub fn from(entity: T) -> SyncResult<T> {
+        SyncResult::<T>::Changed { entity }
     }
 }
 
@@ -87,18 +53,20 @@ pub struct SyncOutcome {
 }
 
 impl SyncOutcome {
-    pub fn convert(conflict_resolution: ConflictResolutionResults) -> SyncOutcome {
+    pub fn convert(delta: Delta) -> SyncOutcome {
         SyncOutcome {
-            user: conflict_resolution.user.map(SyncResult::<User>::convert),
-            projects: conflict_resolution
+            user: delta.user.map(SyncResult::<User>::from),
+            projects: delta
                 .projects
+                .unwrap_or_default()
                 .into_iter()
-                .map(SyncResult::<Project>::convert)
+                .map(SyncResult::<Project>::from)
                 .collect(),
-            time_entries: conflict_resolution
+            time_entries: delta
                 .time_entries
+                .unwrap_or_default()
                 .into_iter()
-                .map(SyncResult::<TimeEntry>::convert)
+                .map(SyncResult::<TimeEntry>::from)
                 .collect(),
         }
     }
@@ -115,7 +83,7 @@ impl SyncOutcome {
 #[cfg(test)]
 mod tests {
     mod sync_outcome {
-        use super::super::{create, error, update, SyncOutcome};
+        use super::super::SyncOutcome;
         use crate::models::{Project, TimeEntry, User};
         use chrono::Utc;
 

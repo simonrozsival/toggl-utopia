@@ -12,7 +12,7 @@ use crate::toggl_api::TogglApi;
 #[derive(Deserialize)]
 pub struct SyncRequestBody {
     last_sync: DateTime<Utc>,
-    delta: Delta,
+    delta: Option<Delta>,
 }
 
 fn create_api(req: HttpRequest) -> Option<TogglApi> {

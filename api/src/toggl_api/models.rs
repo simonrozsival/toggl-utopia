@@ -37,6 +37,7 @@ pub struct TimeEntry {
     pub duration: i64,
     pub at: DateTime<Utc>,
     pub server_deleted_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_with: Option<String>,
 }
 
@@ -125,7 +126,7 @@ impl TimeEntry {
                 .unwrap_or(-te.start.timestamp()) as i64,
             at: te.at,
             server_deleted_at: te.server_deleted_at,
-            created_with: Some("UtoAPI".to_string()),
+            created_with: None,
         }
     }
 }

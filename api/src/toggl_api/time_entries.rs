@@ -18,19 +18,24 @@ impl TogglApi {
         Ok(time_entries)
     }
 
-    pub fn create_time_entry(&self, te: &TimeEntry) -> Result<TimeEntry, reqwest::Error> {
+    pub fn create_time_entry(&self, te: TimeEntry) -> Result<TimeEntry, reqwest::Error> {
+        let modified_te = TimeEntry {
+            created_with: Some("UtoAPI".to_string()), // this is the thing that I need to change :-/
+            ..te
+        };
+
         let time_entry = self
             .req(endpoints::create_time_entry(&te.workspace_id))
-            .json(&te)
+            .json(&modified_te)
             .send()?
             .json::<TimeEntry>()?;
 
         Ok(time_entry)
     }
 
-    pub fn update_time_entry(&self, te: &TimeEntry) -> Result<TimeEntry, reqwest::Error> {
+    pub fn update_time_entry(&self, te: TimeEntry) -> Result<TimeEntry, reqwest::Error> {
         let time_entry = self
-            .req(endpoints::update_time_entry(&te.workspace_id))
+            .req(endpoints::update_time_entry(&te.id))
             .json(&te)
             .send()?
             .json::<TimeEntry>()?;

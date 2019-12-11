@@ -36,7 +36,7 @@ pub struct TimeEntry {
     pub server_deleted_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone, Default)]
 pub struct Delta {
     pub user: Option<User>,
     pub projects: Option<Vec<Project>>,
@@ -47,6 +47,9 @@ pub trait Entity: Clone + Serialize {
     fn id(&self) -> Id;
     fn is_deleted(&self) -> bool;
     fn last_update(&self) -> DateTime<Utc>;
+    fn exists_on_server(&self) -> bool {
+        self.id() > 0
+    }
 }
 
 impl Entity for User {

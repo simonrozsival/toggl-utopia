@@ -1,28 +1,23 @@
-use super::prelude::{
-    ConflictResolution,
-    ConflictResolution::{Create, Ignore, Update},
-    ConflictResolutionResults,
-};
 use crate::models::{Delta, Entity};
 use crate::toggl_api::models::Id;
 
 type Pair<T> = (T, T);
 
-fn prefer_newer<T: Entity>(client: T, server: T) -> Pair<ConflictResolution<T>> {
+fn prefer_newer<T: Entity>(client: T, server: T) -> Pair<Option<T>> {
     if client.last_update() > server.last_update() {
-        (Ignore, Update(client))
+        (None, Some(client))
     } else {
-        (Update(server), Ignore)
+        (Some(server), None)
     }
 }
 
-fn resolve_single<T: Entity>(client: Option<T>, server: Option<T>) -> Pair<ConflictResolution<T>> {
+fn resolve_single<T: Entity>(client: Option<T>, server: Option<T>) -> Pair<Option<T>> {
     match (client, server) {
-        (None,    None)     => (Ignore, Ignore),
-        (Some(c), None)     => (Ignore, Create(c)),
-        (None,    Some(s))  => (Create(s), Ignore),
+        (None,    None)     => (None, None),
+        (Some(c), None)     => (None, Some(c)),
+        (None,    Some(s))  => (Some(s), None),
         (Some(c), Some(s)) if !c.is_deleted() && s.is_deleted() // we shouldn't update an entity which was already deleted on the server, we can't un-delete it
-            => (Update(s), Ignore),
+            => (Some(s), None),
         (Some(c), Some(s))  => prefer_newer(c, s)
     }
 }
@@ -57,39 +52,36 @@ fn pair<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<Pair<Option<T>>> {
     pairs
 }
 
-pub fn skip_ignored<T: Entity>(data: Vec<ConflictResolution<T>>) -> Vec<ConflictResolution<T>> {
-    data.into_iter().filter(|x| !x.is_ignore()).collect()
+pub fn unwrap<T: Entity>(data: Vec<Option<T>>) -> Vec<T> {
+    data.into_iter().filter_map(|x| x).collect()
 }
 
-fn resolve_many<T: Entity>(
-    client: Option<Vec<T>>,
-    server: Option<Vec<T>>,
-) -> Pair<Vec<ConflictResolution<T>>> {
-    let (for_client, for_server): Pair<Vec<ConflictResolution<T>>> =
+fn resolve_many<T: Entity>(client: Option<Vec<T>>, server: Option<Vec<T>>) -> Pair<Vec<T>> {
+    let (for_client, for_server): Pair<Vec<Option<T>>> =
         pair(client.unwrap_or_default(), server.unwrap_or_default())
             .into_iter()
-            .map(|(c, s)| resolve_single(c.clone(), s.clone()))
+            .map(|(c, s)| resolve_single(c, s))
             .unzip();
 
-    (skip_ignored(for_client), skip_ignored(for_server))
+    (unwrap(for_client), unwrap(for_server))
 }
 
-pub fn resolve(client: Delta, server: Delta) -> Pair<ConflictResolutionResults> {
+pub fn resolve(client: Delta, server: Delta) -> Pair<Delta> {
     let (client_user, server_user) = resolve_single(client.user, server.user);
     let (client_projects, server_projects) = resolve_many(client.projects, server.projects);
     let (client_time_entries, server_time_entries) =
         resolve_many(client.time_entries, server.time_entries); // todo: this needs additionally resolving two running TEs!
 
     (
-        ConflictResolutionResults {
-            user: client_user.to_option(),
-            projects: client_projects,
-            time_entries: client_time_entries,
+        Delta {
+            user: client_user,
+            projects: Some(client_projects),
+            time_entries: Some(client_time_entries),
         },
-        ConflictResolutionResults {
-            user: server_user.to_option(),
-            projects: server_projects,
-            time_entries: server_time_entries,
+        Delta {
+            user: server_user,
+            projects: Some(server_projects),
+            time_entries: Some(server_time_entries),
         },
     )
 }
@@ -123,7 +115,6 @@ mod tests {
     mod prefer_newer {
         use super::super::prefer_newer;
         use super::{create_project, later, sooner};
-        use crate::sync::prelude::ConflictResolution::{Create, Ignore, Update};
 
         #[test]
         fn prefers_client_if_it_was_updated_later() {
@@ -132,8 +123,8 @@ mod tests {
 
             let (client_res, server_res) = prefer_newer(client.clone(), server.clone());
 
-            assert_eq!(client_res, Ignore);
-            assert_eq!(server_res, Update(client));
+            assert_eq!(client_res, None);
+            assert_eq!(server_res, Some(client));
         }
 
         #[test]
@@ -143,15 +134,14 @@ mod tests {
 
             let (client_res, server_res) = prefer_newer(client.clone(), server.clone());
 
-            assert_eq!(client_res, Update(server));
-            assert_eq!(server_res, Ignore);
+            assert_eq!(client_res, Some(server));
+            assert_eq!(server_res, None);
         }
     }
 
     mod resolve_single {
         use super::super::resolve_single;
         use super::{create_project, later, sooner};
-        use crate::sync::prelude::ConflictResolution::{Create, Ignore, Update};
 
         #[test]
         fn create_on_server_when_there_is_not_a_counterpart_on_the_server() {
@@ -159,8 +149,8 @@ mod tests {
 
             let (client_res, server_res) = resolve_single(Some(client.clone()), None);
 
-            assert_eq!(client_res, Ignore);
-            assert_eq!(server_res, Create(client));
+            assert_eq!(client_res, None);
+            assert_eq!(server_res, Some(client));
         }
 
         #[test]
@@ -169,8 +159,8 @@ mod tests {
 
             let (client_res, server_res) = resolve_single(None, Some(server.clone()));
 
-            assert_eq!(client_res, Create(server));
-            assert_eq!(server_res, Ignore);
+            assert_eq!(client_res, Some(server));
+            assert_eq!(server_res, None);
         }
 
         #[test]
@@ -181,8 +171,8 @@ mod tests {
             let (client_res, server_res) =
                 resolve_single(Some(client.clone()), Some(server.clone()));
 
-            assert_eq!(client_res, Update(server));
-            assert_eq!(server_res, Ignore);
+            assert_eq!(client_res, Some(server));
+            assert_eq!(server_res, None);
         }
 
         #[test]
@@ -194,8 +184,8 @@ mod tests {
             let (client_res, server_res) =
                 resolve_single(Some(client.clone()), Some(server.clone()));
 
-            assert_eq!(client_res, Ignore);
-            assert_eq!(server_res, Update(server.id, client));
+            assert_eq!(client_res, None);
+            assert_eq!(server_res, Some(server.id, client));
         }
 
         #[test]
@@ -206,8 +196,8 @@ mod tests {
             let (client_res, server_res) =
                 resolve_single(Some(client.clone()), Some(server.clone()));
 
-            assert_eq!(client_res, Update(server));
-            assert_eq!(server_res, Ignore);
+            assert_eq!(client_res, Some(server));
+            assert_eq!(server_res, None);
         }
 
         #[test]
@@ -219,7 +209,7 @@ mod tests {
                 resolve_single(Some(client.clone()), Some(server.clone()));
 
             assert_eq!(client_res, None);
-            assert_eq!(server_res, Update(server.id, client));
+            assert_eq!(server_res, Some(server.id, client));
         }
     }
 

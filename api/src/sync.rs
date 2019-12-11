@@ -14,14 +14,15 @@ pub fn fetch_snapshot(api: &TogglApi) -> Result<Delta, reqwest::Error> {
 
 pub fn update_server_and_calculate_delta_for_client(
     last_sync: DateTime<Utc>,
-    client_delta: Delta,
+    client_delta: Option<Delta>,
     api: &TogglApi,
 ) -> Result<SyncOutcome, reqwest::Error> {
     // 1. Get the data which have changed on the server since the last update
     let server_delta = server::fetch_changes_since(Some(last_sync), &api)?;
 
     // 2. Figure out what to change on client and what to change on the server
-    let (client_resolution, server_resolution) = conflicts::resolve(client_delta, server_delta);
+    let (client_resolution, server_resolution) =
+        conflicts::resolve(client_delta.unwrap_or_default(), server_delta);
     // - we assume that these two sets are distinct
 
     // 3. Push the changes to the server
