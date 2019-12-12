@@ -16,7 +16,8 @@ fn resolve_single<T: Entity>(client: Option<T>, server: Option<T>) -> Pair<Optio
         (None,    None)     => (None, None),
         (Some(c), None)     => (None, Some(c)),
         (None,    Some(s))  => (Some(s), None),
-        (Some(c), Some(s)) if !c.is_deleted() && s.is_deleted() // we shouldn't update an entity which was already deleted on the server, we can't un-delete it
+        (Some(c), Some(s)) if !c.is_deleted() && s.is_deleted()
+            // we shouldn't update an entity which was already deleted on the server, we can't un-delete it
             => (Some(s), None),
         (Some(c), Some(s))  => prefer_newer(c, s)
     }

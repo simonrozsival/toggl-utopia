@@ -2,6 +2,7 @@ use actix_web::HttpResponse;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
+use crate::error::Error;
 use crate::models::Delta;
 use crate::sync::prelude::SyncOutcome;
 
@@ -22,12 +23,9 @@ where
 }
 
 #[derive(Serialize)]
-struct Error<T>
-where
-    T: Serialize,
-{
-    code: u64,
-    error: T,
+struct ErrorBody {
+    code: u16,
+    msg: String,
 }
 
 /// Creates a meta structure for the standard body template with the current server time.
@@ -51,15 +49,17 @@ where
 }
 
 /// Creates a body with correct meta and payload for the given error.
-fn error<T>(code: u64, err: T, start: DateTime<Utc>) -> Body<Error<T>>
-where
-    T: Serialize,
-{
+fn error(err: Error, start: DateTime<Utc>) -> Body<ErrorBody> {
+    let msg = match &err {
+        Error::ApiError(_, msg) => msg.clone(),
+        Error::NetworkError(reqwest_err) => format!("{:?}", reqwest_err),
+    };
+
     Body {
         meta: meta(true, start),
-        payload: Error::<T> {
-            code: code,
-            error: err,
+        payload: ErrorBody {
+            code: err.code(),
+            msg,
         },
     }
 }
@@ -74,15 +74,15 @@ pub fn sync_success(data: SyncOutcome, start: DateTime<Utc>) -> HttpResponse {
     HttpResponse::Ok().json(body)
 }
 
-pub fn something_went_wrong<E>(err: E, start: DateTime<Utc>) -> HttpResponse
-where
-    E: std::error::Error + std::fmt::Debug,
-{
-    let body = error(1, format!("{:?}", err), start);
+pub fn something_went_wrong(err: Error, start: DateTime<Utc>) -> HttpResponse {
+    let body = error(err, start);
     HttpResponse::InternalServerError().json(body)
 }
 
 pub fn invalid_credentials(start: DateTime<Utc>) -> HttpResponse {
-    let body = error(2, "The credentials you provided are invalid.", start);
+    let body = error(
+        Error::ApiError(401, "The credentials you provided are invalid.".to_string()),
+        start,
+    );
     HttpResponse::Forbidden().json(body)
 }

@@ -1,5 +1,6 @@
 mod auth;
 mod endpoints;
+mod error;
 mod models;
 mod responses;
 mod sync;

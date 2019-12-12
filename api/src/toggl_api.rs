@@ -5,6 +5,7 @@ pub mod time_entries;
 pub mod user;
 
 use crate::auth::Credentials;
+use crate::error::Error;
 
 use endpoints::Endpoint;
 use reqwest::{header, Client};
@@ -34,5 +35,16 @@ impl TogglApi {
 
     pub fn req(&self, endpoint: Endpoint) -> reqwest::RequestBuilder {
         self.client.request(endpoint.method, &endpoint.url)
+    }
+
+    pub fn validate(res: &mut reqwest::Response) -> Result<(), Error> {
+        if res.status().is_success() {
+            Ok(())
+        } else {
+            Err(Error::ApiError(
+                res.status().as_u16(),
+                res.text().unwrap_or("Unknown error.".to_string()),
+            ))
+        }
     }
 }

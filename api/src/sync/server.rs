@@ -1,14 +1,12 @@
 use chrono::{DateTime, Utc};
 
+use crate::error::Error;
 use crate::models::{Delta, Entity, Project, TimeEntry, User};
 use crate::sync::prelude::{created, failed, SyncOutcome, SyncResult};
 use crate::toggl_api::models::TimeEntry as TogglTimeEntry;
 use crate::toggl_api::TogglApi;
 
-pub fn fetch_changes_since(
-    since: Option<DateTime<Utc>>,
-    api: &TogglApi,
-) -> Result<Delta, reqwest::Error> {
+pub fn fetch_changes_since(since: Option<DateTime<Utc>>, api: &TogglApi) -> Result<Delta, Error> {
     let user: User = api.fetch_user()?.into();
 
     let projects: Vec<Project> = api
@@ -31,7 +29,7 @@ pub fn fetch_changes_since(
     })
 }
 
-pub fn currently_running_time_entry(api: &TogglApi) -> Result<Option<TimeEntry>, reqwest::Error> {
+pub fn currently_running_time_entry(api: &TogglApi) -> Result<Option<TimeEntry>, Error> {
     let maybe_te = api.fetch_current_running_time_entry()?;
     Ok(maybe_te.map(|te| te.into()))
 }
@@ -39,14 +37,14 @@ pub fn currently_running_time_entry(api: &TogglApi) -> Result<Option<TimeEntry>,
 fn create_time_entry(te: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
     match api.create_time_entry(TogglTimeEntry::from(&te)) {
         Ok(entity) => Some(created(te.id, entity.into())),
-        Err(err) => Some(failed(te.id, format!("{:?}", err))),
+        Err(err) => Some(failed(te.id, err)),
     }
 }
 
 fn update_time_entry(te: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
     match api.update_time_entry(TogglTimeEntry::from(&te)) {
         Ok(_) => None,
-        Err(err) => Some(failed(te.id, format!("{:?}", err))),
+        Err(err) => Some(failed(te.id, err)),
     }
 }
 

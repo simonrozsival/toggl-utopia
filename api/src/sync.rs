@@ -4,11 +4,12 @@ mod server;
 
 use chrono::{DateTime, Utc};
 
+use crate::error::Error;
 use crate::models::{Delta, TimeEntry};
 use crate::toggl_api::{models::Id, TogglApi};
 use prelude::{SyncOutcome, SyncResult};
 
-pub fn fetch_snapshot(api: &TogglApi) -> Result<Delta, reqwest::Error> {
+pub fn fetch_snapshot(api: &TogglApi) -> Result<Delta, Error> {
     server::fetch_changes_since(None, &api)
 }
 
@@ -16,7 +17,7 @@ pub fn update_server_and_calculate_delta_for_client(
     last_sync: DateTime<Utc>,
     client_delta: Option<Delta>,
     api: &TogglApi,
-) -> Result<SyncOutcome, reqwest::Error> {
+) -> Result<SyncOutcome, Error> {
     // 1. Get the data which have changed on the server since the last update
     let server_delta = server::fetch_changes_since(Some(last_sync), &api)?;
 

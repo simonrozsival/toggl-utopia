@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::error::Error;
 use crate::models::{Delta, Entity, Project, TimeEntry, User};
 use crate::toggl_api::models::Id;
 use std::cmp::PartialEq;
@@ -14,13 +15,9 @@ pub enum SyncResult<T: Entity> {
     },
     Failed {
         client_assigned_id: Id,
-        code: u64,
+        code: u16,
         message: String,
     },
-}
-
-pub fn changed<T: Entity>(entity: T) -> SyncResult<T> {
-    SyncResult::<T>::Changed(entity)
 }
 
 pub fn created<T: Entity>(client_assigned_id: Id, entity: T) -> SyncResult<T> {
@@ -30,10 +27,15 @@ pub fn created<T: Entity>(client_assigned_id: Id, entity: T) -> SyncResult<T> {
     }
 }
 
-pub fn failed<T: Entity>(client_assigned_id: Id, message: String) -> SyncResult<T> {
+pub fn failed<T: Entity>(client_assigned_id: Id, err: Error) -> SyncResult<T> {
+    let (code, message) = match err {
+        Error::ApiError(code, message) => (code, message),
+        Error::NetworkError(inner) => (1, format!("{:#?}", inner)),
+    };
+
     SyncResult::<T>::Failed {
         client_assigned_id,
-        code: 0,
+        code,
         message,
     }
 }
