@@ -16,7 +16,7 @@ impl TogglApi {
 
     pub fn create_project(&self, project: Project) -> Result<Project, Error> {
         let mut response = self
-            .req(endpoints::create_project(&project.workspace_id))
+            .req(endpoints::create_project(project.workspace_id))
             .json(&project)
             .send()?;
 
@@ -27,7 +27,7 @@ impl TogglApi {
 
     pub fn update_project(&self, project: Project) -> Result<Project, Error> {
         let mut response = self
-            .req(endpoints::update_project(&project.id))
+            .req(endpoints::update_project(project.id))
             .json(&project)
             .send()?;
 

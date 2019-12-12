@@ -1,7 +1,7 @@
 use super::models::Id;
 use chrono::{DateTime, Utc};
 
-const BASE_URL: &'static str = "https://mobile.toggl.space/api";
+const BASE_URL: &str = "https://mobile.toggl.space/api";
 
 #[derive(Debug)]
 pub struct Endpoint {
@@ -44,14 +44,14 @@ pub fn time_entries(since: Option<DateTime<Utc>>) -> Endpoint {
     }
 }
 
-pub fn create_time_entry(workspace_id: &Id) -> Endpoint {
+pub fn create_time_entry(workspace_id: Id) -> Endpoint {
     Endpoint {
         url: format!("{}/v9/workspaces/{}/time_entries", BASE_URL, workspace_id),
         method: reqwest::Method::POST,
     }
 }
 
-pub fn update_time_entry(id: &Id) -> Endpoint {
+pub fn update_time_entry(id: Id) -> Endpoint {
     Endpoint {
         url: format!("{}/v9/time_entries/{}", BASE_URL, id),
         method: reqwest::Method::PUT,
@@ -65,14 +65,14 @@ pub fn current_running_time_entry() -> Endpoint {
     }
 }
 
-pub fn create_project(workspace_id: &Id) -> Endpoint {
+pub fn create_project(workspace_id: Id) -> Endpoint {
     Endpoint {
         url: format!("{}/v9/workspaces/{}/projects", BASE_URL, workspace_id),
         method: reqwest::Method::POST,
     }
 }
 
-pub fn update_project(id: &Id) -> Endpoint {
+pub fn update_project(id: Id) -> Endpoint {
     Endpoint {
         url: format!("{}/v9/projects/{}", BASE_URL, id),
         method: reqwest::Method::PUT,

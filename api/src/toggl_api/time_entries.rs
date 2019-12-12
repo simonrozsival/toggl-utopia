@@ -26,7 +26,7 @@ impl TogglApi {
         };
 
         let mut response = self
-            .req(endpoints::create_time_entry(&te.workspace_id))
+            .req(endpoints::create_time_entry(te.workspace_id))
             .json(&modified_te)
             .send()?;
 
@@ -37,7 +37,7 @@ impl TogglApi {
 
     pub fn update_time_entry(&self, te: TimeEntry) -> Result<TimeEntry, Error> {
         let mut response = self
-            .req(endpoints::update_time_entry(&te.id))
+            .req(endpoints::update_time_entry(te.id))
             .json(&te)
             .send()?;
 

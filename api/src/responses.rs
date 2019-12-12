@@ -31,7 +31,7 @@ struct ErrorBody {
 /// Creates a meta structure for the standard body template with the current server time.
 fn meta(error: bool, start: DateTime<Utc>) -> Meta {
     Meta {
-        error: error,
+        error,
         utc_server_time: Utc::now(),
         processing_request_took_ms: Utc::now().signed_duration_since(start).num_milliseconds(),
     }
@@ -44,7 +44,7 @@ where
 {
     Body::<T> {
         meta: meta(false, start),
-        payload: payload,
+        payload,
     }
 }
 

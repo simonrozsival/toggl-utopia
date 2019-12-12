@@ -51,9 +51,9 @@ fn update_time_entry(entity: &TimeEntry, api: &TogglApi) -> Option<SyncResult<Ti
 
 fn push_time_entry(entity: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
     if !entity.exists_on_server() {
-        return create_time_entry(entity.into(), &api);
+        create_time_entry(entity, &api)
     } else {
-        return update_time_entry(entity.into(), &api);
+        update_time_entry(entity, &api)
     }
 }
 
@@ -73,9 +73,9 @@ fn update_project(entity: &Project, api: &TogglApi) -> Option<SyncResult<Project
 
 fn push_project(entity: &Project, api: &TogglApi) -> Option<SyncResult<Project>> {
     if !entity.exists_on_server() {
-        return create_project(entity.into(), &api);
+        create_project(entity, &api)
     } else {
-        return update_project(entity.into(), &api);
+        update_project(entity, &api)
     }
 }
 
@@ -125,7 +125,7 @@ pub fn apply_changes(delta: Delta, api: &TogglApi) -> SyncOutcome {
 
     SyncOutcome {
         user: None,
-        projects: projects,
+        projects,
         time_entries,
     }
 }

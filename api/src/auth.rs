@@ -7,10 +7,10 @@ pub enum Credentials {
 use Credentials::{Token, UsernamePassword};
 
 impl Credentials {
-    pub fn into_basic(self: &Self) -> (&str, &str) {
+    pub fn into_basic(self: Self) -> (String, String) {
         match self {
-            UsernamePassword(username, password) => (&username, &password),
-            Token(token) => (&token, "api_token"),
+            UsernamePassword(username, password) => (username, password),
+            Token(token) => (token, "api_token".to_string()),
         }
     }
 

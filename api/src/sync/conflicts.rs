@@ -35,9 +35,7 @@ fn pair<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<Pair<Option<T>>> {
     let mut pairs: Vec<(Option<T>, Option<T>)> = Vec::new();
 
     for client_entity in client.iter() {
-        let maybe_server_entity = server_entities
-            .get(&client_entity.id())
-            .map(|server_entity| server_entity.clone());
+        let maybe_server_entity = server_entities.get(&client_entity.id()).cloned();
 
         if maybe_server_entity.is_some() {
             server_entities.remove(&client_entity.id());

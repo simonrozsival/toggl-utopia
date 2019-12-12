@@ -43,7 +43,7 @@ impl TogglApi {
         } else {
             Err(Error::ApiError(
                 res.status().as_u16(),
-                res.text().unwrap_or("Unknown error.".to_string()),
+                res.text().unwrap_or_else(|_| "Unknown error.".to_string()),
             ))
         }
     }
