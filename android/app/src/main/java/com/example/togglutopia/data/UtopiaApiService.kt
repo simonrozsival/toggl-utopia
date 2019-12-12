@@ -10,6 +10,6 @@ interface UtopiaApiService {
     @GET("/current-snapshot")
     fun login(@Header("Authorization") credentials: String): Call<SnapshotResponse>
 
-    @GET("/current-snapshot") // /sync
+    @GET("/sync")
     fun sync(@Header("Authorization") credentials: String): Call<SnapshotResponse>
 }
