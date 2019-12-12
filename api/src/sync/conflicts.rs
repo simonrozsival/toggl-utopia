@@ -52,7 +52,7 @@ fn pair<T: Entity>(client: Vec<T>, server: Vec<T>) -> Vec<Pair<Option<T>>> {
     pairs
 }
 
-pub fn unwrap<T: Entity>(data: Vec<Option<T>>) -> Vec<T> {
+pub fn filter_map<T: Entity>(data: Vec<Option<T>>) -> Vec<T> {
     data.into_iter().filter_map(|x| x).collect()
 }
 
@@ -63,7 +63,7 @@ fn resolve_many<T: Entity>(client: Option<Vec<T>>, server: Option<Vec<T>>) -> Pa
             .map(|(c, s)| resolve_single(c, s))
             .unzip();
 
-    (unwrap(for_client), unwrap(for_server))
+    (filter_map(for_client), filter_map(for_server))
 }
 
 pub fn resolve(client: Delta, server: Delta) -> Pair<Delta> {

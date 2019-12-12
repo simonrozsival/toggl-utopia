@@ -5,7 +5,7 @@ mod server;
 use chrono::{DateTime, Utc};
 
 use crate::models::{Delta, TimeEntry};
-use crate::toggl_api::TogglApi;
+use crate::toggl_api::{models::Id, TogglApi};
 use prelude::{SyncOutcome, SyncResult};
 
 pub fn fetch_snapshot(api: &TogglApi) -> Result<Delta, reqwest::Error> {
@@ -19,17 +19,6 @@ pub fn update_server_and_calculate_delta_for_client(
 ) -> Result<SyncOutcome, reqwest::Error> {
     // 1. Get the data which have changed on the server since the last update
     let server_delta = server::fetch_changes_since(Some(last_sync), &api)?;
-
-    let running_on_server = server::currently_running_time_entry(&api)?;
-    let running_on_client = client_delta
-        .as_ref()
-        .and_then(|delta| delta.time_entries.as_ref())
-        .and_then(|time_entries| {
-            time_entries
-                .into_iter()
-                .find(|te| te.is_running())
-                .map(|te| te.clone())
-        });
 
     // Lemma:
     // There might be a running TE "A" on client even if it isn't in the delta
@@ -47,15 +36,14 @@ pub fn update_server_and_calculate_delta_for_client(
 
     // 2. Figure out what to change on client and what to change on the server
     let (mut client_resolution, mut server_resolution) =
-        conflicts::resolve(client_delta.unwrap_or_default(), server_delta);
+        conflicts::resolve(client_delta.clone().unwrap_or_default(), server_delta);
     // - we assume that the two resulting sets are distinct
 
     // 3. Check how the running TEs were affected by the conflict resolution
-    let running_on_client = running_on_client
-        .map(|time_entry| effect_of_conflict_resolution(time_entry, &client_resolution));
-    let running_on_server = running_on_server
-        .map(|time_entry| effect_of_conflict_resolution(time_entry, &server_resolution));
-    let maybe_stopped = should_stop(running_on_client, running_on_server).map(|te| te.stop());
+    let maybe_stopped = client_delta.as_ref().and_then(|delta| {
+        time_entry_which_should_be_stopped(&delta, &client_resolution, &server_resolution, &api)
+    });
+
     if let Some(stopped) = &maybe_stopped {
         // We must now propagate this change both to the server and to the client.
         // We will add this change to the list of server resolutions and the TE will be
@@ -63,9 +51,10 @@ pub fn update_server_and_calculate_delta_for_client(
         // (the server thinks that the client already has the data), so we must add it
         // to the list of client resolutions as well after we make sure, that this update
         // actually worked.
-
-        let time_entries = push_and_maybe_replace(stopped.clone(), server_resolution.time_entries);
-        server_resolution.time_entries = Some(time_entries);
+        server_resolution.time_entries = Some(push_and_maybe_replace(
+            server_resolution.time_entries,
+            stopped.clone(),
+        ));
     }
 
     // 4. Push the changes to the server
@@ -73,22 +62,17 @@ pub fn update_server_and_calculate_delta_for_client(
 
     // 5. Check if we tried stopping a TE and if it hasn't failed, push the change to the user
     if let Some(stopped) = maybe_stopped {
-        // has stopping failed?
-        let potential_stopping_failure =
-            server_update_outcome.time_entries.iter().find(|outcome| {
-                if let SyncResult::<TimeEntry>::Failed {
-                    client_assigned_id, ..
-                } = outcome
-                {
-                    client_assigned_id == &stopped.id
-                } else {
-                    false
-                }
-            });
+        let stopping_succeeded = server_update_outcome
+            .time_entries
+            .iter()
+            .find(|result| has_failed(&stopped.id, &result))
+            .is_none();
 
-        if let None = potential_stopping_failure {
-            let time_entries = push_and_maybe_replace(stopped, client_resolution.time_entries);
-            client_resolution.time_entries = Some(time_entries);
+        if stopping_succeeded {
+            client_resolution.time_entries = Some(push_and_maybe_replace(
+                client_resolution.time_entries,
+                stopped,
+            ));
         }
     }
 
@@ -99,11 +83,32 @@ pub fn update_server_and_calculate_delta_for_client(
     Ok(resolution)
 }
 
-fn push_and_maybe_replace(
-    stopped: TimeEntry,
-    time_entries: Option<Vec<TimeEntry>>,
-) -> Vec<TimeEntry> {
-    let mut time_entries: Vec<_> = time_entries
+fn time_entry_which_should_be_stopped(
+    client_delta: &Delta,
+    client_resolution: &Delta,
+    server_resolution: &Delta,
+    api: &TogglApi,
+) -> Option<TimeEntry> {
+    let running_on_server = server::currently_running_time_entry(&api)
+        .ok()?
+        .map(|time_entry| effect_of_conflict_resolution(time_entry, &server_resolution));
+
+    let running_on_client = client_delta
+        .time_entries
+        .as_ref()
+        .and_then(|time_entries| {
+            time_entries
+                .into_iter()
+                .find(|te| te.is_running())
+                .map(|te| te.clone())
+        })
+        .map(|time_entry| effect_of_conflict_resolution(time_entry, &client_resolution));
+
+    should_stop(running_on_client, running_on_server).map(|te| te.stop())
+}
+
+fn push_and_maybe_replace(entries: Option<Vec<TimeEntry>>, stopped: TimeEntry) -> Vec<TimeEntry> {
+    let mut time_entries: Vec<_> = entries
         .unwrap_or(vec![])
         .into_iter()
         .filter(|existing| existing.id != stopped.id)
@@ -138,5 +143,16 @@ fn should_stop(client_te: Option<TimeEntry>, server_te: Option<TimeEntry>) -> Op
         }
     } else {
         None
+    }
+}
+
+fn has_failed(id: &Id, result: &SyncResult<TimeEntry>) -> bool {
+    if let SyncResult::<TimeEntry>::Failed {
+        client_assigned_id, ..
+    } = result
+    {
+        client_assigned_id == id
+    } else {
+        false
     }
 }
