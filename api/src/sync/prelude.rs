@@ -5,10 +5,9 @@ use crate::toggl_api::models::Id;
 use std::cmp::PartialEq;
 
 #[derive(Serialize, PartialEq, Debug, Clone)]
+#[serde(tag = "type", content = "payload")]
 pub enum SyncResult<T: Entity> {
-    Changed {
-        entity: T,
-    },
+    Changed(T),
     Created {
         client_assigned_id: Id,
         entity: T,
@@ -21,7 +20,7 @@ pub enum SyncResult<T: Entity> {
 }
 
 pub fn changed<T: Entity>(entity: T) -> SyncResult<T> {
-    SyncResult::<T>::Changed { entity }
+    SyncResult::<T>::Changed(entity)
 }
 
 pub fn created<T: Entity>(client_assigned_id: Id, entity: T) -> SyncResult<T> {
@@ -41,7 +40,7 @@ pub fn failed<T: Entity>(client_assigned_id: Id, message: String) -> SyncResult<
 
 impl<T: Entity> SyncResult<T> {
     pub fn from(entity: T) -> SyncResult<T> {
-        SyncResult::<T>::Changed { entity }
+        SyncResult::<T>::Changed(entity)
     }
 }
 
