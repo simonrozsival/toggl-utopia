@@ -84,7 +84,7 @@ impl SyncOutcome {
 #[cfg(test)]
 mod tests {
     mod sync_outcome {
-        use super::super::SyncOutcome;
+        use super::super::{SyncOutcome, SyncResult};
         use crate::models::{Project, TimeEntry, User};
         use chrono::Utc;
 
@@ -112,17 +112,17 @@ mod tests {
         fn merges_a_non_empty_with_an_empty() {
             let a = empty();
             let b = SyncOutcome {
-                user: Some(update(
-                    123,
-                    &User {
+                user: Some(SyncResult::<User>::Created {
+                    client_assigned_id: 123,
+                    entity: User {
                         id: 1,
                         default_workspace_id: 0,
                         fullname: "user".to_string(),
                         api_token: "token".to_string(),
                         at: Utc::now(),
                     },
-                )),
-                projects: vec![create(&Project {
+                }),
+                projects: vec![SyncResult::<Project>::Changed(Project {
                     id: 2,
                     workspace_id: 0,
                     name: "project".to_string(),
@@ -131,19 +131,11 @@ mod tests {
                     at: Utc::now(),
                     server_deleted_at: None,
                 })],
-                time_entries: vec![error(
-                    &TimeEntry {
-                        id: 3,
-                        workspace_id: 0,
-                        description: "description".to_string(),
-                        project_id: None,
-                        start: Utc::now(),
-                        duration: None,
-                        at: Utc::now(),
-                        server_deleted_at: None,
-                    },
-                    "error".to_string(),
-                )],
+                time_entries: vec![SyncResult::<TimeEntry>::Failed {
+                    client_assigned_id: 3,
+                    code: 1,
+                    message: "msg".to_string(),
+                }],
             };
 
             let merged = SyncOutcome::merge(a, b.clone());
@@ -154,17 +146,17 @@ mod tests {
         #[test]
         fn merges_two_non_overlapping_non_empty() {
             let a = SyncOutcome {
-                user: Some(update(
-                    123,
-                    &User {
+                user: Some(SyncResult::<User>::Created {
+                    client_assigned_id: 123,
+                    entity: User {
                         id: 1,
                         default_workspace_id: 0,
                         fullname: "user".to_string(),
                         api_token: "token".to_string(),
                         at: Utc::now(),
                     },
-                )),
-                projects: vec![create(&Project {
+                }),
+                projects: vec![SyncResult::<Project>::Changed(Project {
                     id: 2,
                     workspace_id: 0,
                     name: "project A".to_string(),
@@ -173,23 +165,15 @@ mod tests {
                     at: Utc::now(),
                     server_deleted_at: None,
                 })],
-                time_entries: vec![error(
-                    &TimeEntry {
-                        id: 3,
-                        workspace_id: 0,
-                        description: "description A".to_string(),
-                        project_id: None,
-                        start: Utc::now(),
-                        duration: None,
-                        at: Utc::now(),
-                        server_deleted_at: None,
-                    },
-                    "error".to_string(),
-                )],
+                time_entries: vec![SyncResult::<TimeEntry>::Failed {
+                    client_assigned_id: 3,
+                    code: 1,
+                    message: "error".to_string(),
+                }],
             };
             let b = SyncOutcome {
                 user: None,
-                projects: vec![create(&Project {
+                projects: vec![SyncResult::<Project>::Changed(Project {
                     id: 4,
                     workspace_id: 0,
                     name: "project B".to_string(),
@@ -198,19 +182,11 @@ mod tests {
                     at: Utc::now(),
                     server_deleted_at: None,
                 })],
-                time_entries: vec![error(
-                    &TimeEntry {
-                        id: 5,
-                        workspace_id: 0,
-                        description: "description B".to_string(),
-                        project_id: None,
-                        start: Utc::now(),
-                        duration: Some(5),
-                        at: Utc::now(),
-                        server_deleted_at: None,
-                    },
-                    "error".to_string(),
-                )],
+                time_entries: vec![SyncResult::<TimeEntry>::Failed {
+                    client_assigned_id: 5,
+                    code: 3,
+                    message: "error".to_string(),
+                }],
             };
 
             let merged = SyncOutcome::merge(a, b);

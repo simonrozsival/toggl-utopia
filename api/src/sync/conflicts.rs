@@ -186,7 +186,7 @@ mod tests {
                 resolve_single(Some(client.clone()), Some(server.clone()));
 
             assert_eq!(client_res, None);
-            assert_eq!(server_res, Some(server.id, client));
+            assert_eq!(server_res, Some(client));
         }
 
         #[test]
@@ -210,7 +210,7 @@ mod tests {
                 resolve_single(Some(client.clone()), Some(server.clone()));
 
             assert_eq!(client_res, None);
-            assert_eq!(server_res, Some(server.id, client));
+            assert_eq!(server_res, Some(client));
         }
     }
 
