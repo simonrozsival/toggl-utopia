@@ -99,7 +99,7 @@ impl User {
 }
 
 impl Project {
-    fn from(project: &UtopiaProject) -> Project {
+    pub fn from(project: &UtopiaProject) -> Project {
         Project {
             id: project.id,
             workspace_id: project.workspace_id,

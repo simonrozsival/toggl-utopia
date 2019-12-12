@@ -64,3 +64,17 @@ pub fn current_running_time_entry() -> Endpoint {
         method: reqwest::Method::GET,
     }
 }
+
+pub fn create_project(workspace_id: &Id) -> Endpoint {
+    Endpoint {
+        url: format!("{}/v9/workspaces/{}/projects", BASE_URL, workspace_id),
+        method: reqwest::Method::POST,
+    }
+}
+
+pub fn update_project(id: &Id) -> Endpoint {
+    Endpoint {
+        url: format!("{}/v9/projects/{}", BASE_URL, id),
+        method: reqwest::Method::PUT,
+    }
+}
