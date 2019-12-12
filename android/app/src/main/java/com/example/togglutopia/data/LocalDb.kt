@@ -7,6 +7,9 @@ import androidx.core.content.edit
 import com.example.togglutopia.data.model.Project
 import com.example.togglutopia.data.model.TimeEntry
 import com.example.togglutopia.data.model.User
+import com.example.togglutopia.ui.TogglState
+import com.example.togglutopia.utils.ISO8601
+import com.example.togglutopia.utils.getISO8601
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,11 +17,41 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import java.util.*
 import kotlin.coroutines.CoroutineContext
 
 
-//@ExperimentalCoroutinesApi
-//class LocalDb(context: Context) {
+class LocalDb(context: Context) {
+
+    private val sharedPreferences = context.getSharedPreferences("utopia", Context.MODE_PRIVATE)
+//    private val moshi = Moshi.Builder().build()
+//    private val stateAdapter = moshi.adapter(TogglState::class.java)
+
+//    var togglState: TogglState
+//        get() {
+//            val stateJson = sharedPreferences.getString("state", null)
+//            return if (stateJson != null) {
+//                stateAdapter.fromJson(stateJson) ?: TogglState
+//            } else {
+//                TogglState
+//            }
+//        }
+//        set(value) {
+//            val stateJson = stateAdapter.toJson(value)
+//            sharedPreferences.edit {
+//                putString("state", stateJson)
+//            }
+//        }
+
+    var lastSync: String?
+        get() = sharedPreferences.getString("last_sync", null)
+        set(value) {
+            sharedPreferences.edit(commit = true) {
+                putString("last_sync", value)
+            }
+        }
+
+
 //
 //    private val sharedPreferences = context.getSharedPreferences("utopia", Context.MODE_PRIVATE)
 //    private val moshi = Moshi.Builder().build()
@@ -72,4 +105,5 @@ import kotlin.coroutines.CoroutineContext
 //        is MutableSet<*> -> getStringSet(key, default as MutableSet<String>) as T
 //        else -> throw IllegalArgumentException("generic type not handle ${T::class.java.name}")
 //    }
-//}
+//        }
+}
