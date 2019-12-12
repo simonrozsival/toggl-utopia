@@ -40,6 +40,21 @@ impl TimeEntry {
     pub fn is_running(&self) -> bool {
         self.duration.is_none()
     }
+
+    pub fn elapsed_seconds(&self) -> u64 {
+        std::cmp::max(
+            Utc::now().signed_duration_since(self.start).num_seconds(),
+            0,
+        ) as u64
+    }
+
+    pub fn stop(&self) -> TimeEntry {
+        TimeEntry {
+            duration: Some(self.elapsed_seconds()),
+            at: Utc::now(),
+            ..self.clone()
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone, Default)]
