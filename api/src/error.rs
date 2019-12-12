@@ -1,6 +1,11 @@
-#[derive(Debug)]
+use failure::Fail;
+
+#[derive(Debug, Fail)]
 pub enum Error {
+    #[fail(display = "API error {}: {}", _0, _1)]
     ApiError(u16, String),
+
+    #[fail(display = "Network error: {:?}", _0)]
     NetworkError(reqwest::Error),
 }
 
@@ -17,23 +22,5 @@ impl std::convert::From<reqwest::Error> for Error {
     fn from(err: reqwest::Error) -> Error {
         println!("From reqwest {:?}", err);
         Error::NetworkError(err)
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Error::NetworkError(ref inner) => Some(inner),
-            _ => None,
-        }
-    }
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Error::ApiError(code, msg) => write!(f, "API error {}: {}", code, msg),
-            Error::NetworkError(inner) => inner.fmt(f),
-        }
     }
 }
