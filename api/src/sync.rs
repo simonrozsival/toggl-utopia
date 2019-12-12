@@ -70,10 +70,22 @@ pub fn update_server_and_calculate_delta_for_client(
             .is_none();
 
         if stopping_succeeded {
-            client_resolution.time_entries = Some(push_and_maybe_replace(
-                client_resolution.time_entries,
-                stopped,
-            ));
+            let created_as_stopped = server_update_outcome
+                .time_entries
+                .iter()
+                .find(|result| has_been_created(&stopped.id, &result))
+                .is_some();
+
+            if !created_as_stopped {
+                // If it was created as stopped, then it will be in the response
+                // from the server, and we don't have to add any further sync result.
+                // On the other hand, if it was just updated, it won't be in the
+                // response, so we have to add the change manually:
+                client_resolution.time_entries = Some(push_and_maybe_replace(
+                    client_resolution.time_entries,
+                    stopped,
+                ));
+            }
         }
     }
 
@@ -149,6 +161,17 @@ fn should_stop(client_te: Option<TimeEntry>, server_te: Option<TimeEntry>) -> Op
 
 fn has_failed(id: &Id, result: &SyncResult<TimeEntry>) -> bool {
     if let SyncResult::<TimeEntry>::Failed {
+        client_assigned_id, ..
+    } = result
+    {
+        client_assigned_id == id
+    } else {
+        false
+    }
+}
+
+fn has_been_created(id: &Id, result: &SyncResult<TimeEntry>) -> bool {
+    if let SyncResult::<TimeEntry>::Created {
         client_assigned_id, ..
     } = result
     {
