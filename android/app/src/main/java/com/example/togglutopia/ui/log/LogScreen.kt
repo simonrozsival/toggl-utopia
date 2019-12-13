@@ -28,7 +28,7 @@ fun LogScreen(interactions: LogInteractions) {
                 Text(text = "You are logged in as $fullname")
                 Button(text = "Sync", onClick = { interactions.sync() })
                 HeightSpacer(32.dp)
-                TogglState.timeEntryList.forEach { te ->
+                TogglState.timeEntryList.sortedByDescending { it.start }.forEach { te ->
                     TimeEntryRow(timeEntry = te)
                 }
             }
