@@ -90,10 +90,10 @@ pub fn apply_changes(delta: Delta, api: &TogglApi) -> SyncOutcome {
     }
 }
 
-fn push<T, TApi>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
+fn push<T, TToggl>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
 where
-    T: Entity + Into<TApi>,
-    TApi: CreateOrUpdate + Into<T>,
+    T: Entity + Into<TToggl>,
+    TToggl: CreateOrUpdate + Into<T>,
 {
     if entity.exists_on_server() {
         update(api, entity)
@@ -102,10 +102,10 @@ where
     }
 }
 
-fn create<T, TApi>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
+fn create<T, TToggl>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
 where
-    T: Entity + Into<TApi>,
-    TApi: Into<T> + CreateOrUpdate,
+    T: Entity + Into<TToggl>,
+    TToggl: Into<T> + CreateOrUpdate,
 {
     match api.create(entity.clone().into()) {
         Ok(res) => Some(created(entity.id(), res.into())),
@@ -113,12 +113,12 @@ where
     }
 }
 
-fn update<T, TApi>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
+fn update<T, TToggl>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
 where
-    T: Entity + Into<TApi>,
-    TApi: Into<T> + CreateOrUpdate,
+    T: Entity + Into<TToggl>,
+    TToggl: Into<T> + CreateOrUpdate,
 {
-    match api.update(entity.clone().into() as TApi) {
+    match api.update(entity.clone().into()) {
         Ok(_) => None,
         Err(err) => Some(failed(entity.id(), err)),
     }
