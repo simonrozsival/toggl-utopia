@@ -158,11 +158,8 @@ fn should_stop(client_te: Option<TimeEntry>, server_te: Option<TimeEntry>) -> Op
 }
 
 fn has_failed(id: Id, result: &SyncResult<TimeEntry>) -> bool {
-    if let SyncResult::<TimeEntry>::Failed {
-        client_assigned_id, ..
-    } = result
-    {
-        *client_assigned_id == id
+    if let SyncResult::<TimeEntry>::Failed { entity_id, .. } = result {
+        *entity_id == id
     } else {
         false
     }

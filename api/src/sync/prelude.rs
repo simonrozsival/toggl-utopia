@@ -6,22 +6,24 @@ use crate::toggl_api::models::Id;
 use std::cmp::PartialEq;
 
 #[derive(Serialize, PartialEq, Debug, Clone)]
-#[serde(tag = "type", content = "payload")]
+#[serde(tag = "type")]
 pub enum SyncResult<T: Entity> {
-    Changed(T),
+    Changed {
+        entity: T,
+    },
     Created {
         client_assigned_id: Id,
         entity: T,
     },
     Failed {
-        client_assigned_id: Id,
+        entity_id: Id,
         code: u16,
         message: String,
     },
 }
 
 pub fn changed<T: Entity>(entity: T) -> SyncResult<T> {
-    SyncResult::<T>::Changed(entity)
+    SyncResult::<T>::Changed { entity }
 }
 
 pub fn created<T: Entity>(client_assigned_id: Id, entity: T) -> SyncResult<T> {
@@ -31,14 +33,14 @@ pub fn created<T: Entity>(client_assigned_id: Id, entity: T) -> SyncResult<T> {
     }
 }
 
-pub fn failed<T: Entity>(client_assigned_id: Id, err: Error) -> SyncResult<T> {
+pub fn failed<T: Entity>(entity_id: Id, err: Error) -> SyncResult<T> {
     let (code, message) = match err {
         Error::ApiError(code, message) => (code, message),
         Error::NetworkError(inner) => (1, format!("{:#?}", inner)),
     };
 
     SyncResult::<T>::Failed {
-        client_assigned_id,
+        entity_id,
         code,
         message,
     }
@@ -46,7 +48,7 @@ pub fn failed<T: Entity>(client_assigned_id: Id, err: Error) -> SyncResult<T> {
 
 impl<T: Entity> SyncResult<T> {
     pub fn from(entity: T) -> SyncResult<T> {
-        SyncResult::<T>::Changed(entity)
+        SyncResult::<T>::Changed { entity }
     }
 }
 
@@ -109,7 +111,7 @@ impl SyncOutcome {
         changes
             .iter()
             .filter_map(|change| match change {
-                SyncResult::<T>::Changed(entity) if known_changes.contains(&entity) => None, // nothing new, get rid of it
+                SyncResult::<T>::Changed { entity } if known_changes.contains(&entity) => None, // nothing new, get rid of it
                 _ => Some(change.clone()), // keep it
             })
             .collect()
@@ -157,17 +159,19 @@ mod tests {
                         at: Utc::now(),
                     },
                 }),
-                projects: vec![SyncResult::<Project>::Changed(Project {
-                    id: 2,
-                    workspace_id: 0,
-                    name: "project".to_string(),
-                    color: "#ff0000".to_string(),
-                    active: true,
-                    at: Utc::now(),
-                    server_deleted_at: None,
-                })],
+                projects: vec![SyncResult::<Project>::Changed {
+                    entity: Project {
+                        id: 2,
+                        workspace_id: 0,
+                        name: "project".to_string(),
+                        color: "#ff0000".to_string(),
+                        active: true,
+                        at: Utc::now(),
+                        server_deleted_at: None,
+                    },
+                }],
                 time_entries: vec![SyncResult::<TimeEntry>::Failed {
-                    client_assigned_id: 3,
+                    entity_id: 3,
                     code: 1,
                     message: "msg".to_string(),
                 }],
@@ -191,34 +195,38 @@ mod tests {
                         at: Utc::now(),
                     },
                 }),
-                projects: vec![SyncResult::<Project>::Changed(Project {
-                    id: 2,
-                    workspace_id: 0,
-                    name: "project A".to_string(),
-                    color: "#ff0000".to_string(),
-                    active: true,
-                    at: Utc::now(),
-                    server_deleted_at: None,
-                })],
+                projects: vec![SyncResult::<Project>::Changed {
+                    entity: Project {
+                        id: 2,
+                        workspace_id: 0,
+                        name: "project A".to_string(),
+                        color: "#ff0000".to_string(),
+                        active: true,
+                        at: Utc::now(),
+                        server_deleted_at: None,
+                    },
+                }],
                 time_entries: vec![SyncResult::<TimeEntry>::Failed {
-                    client_assigned_id: 3,
+                    entity_id: 3,
                     code: 1,
                     message: "error".to_string(),
                 }],
             };
             let b = SyncOutcome {
                 user: None,
-                projects: vec![SyncResult::<Project>::Changed(Project {
-                    id: 4,
-                    workspace_id: 0,
-                    name: "project B".to_string(),
-                    color: "#ff0000".to_string(),
-                    active: true,
-                    at: Utc::now(),
-                    server_deleted_at: None,
-                })],
+                projects: vec![SyncResult::<Project>::Changed {
+                    entity: Project {
+                        id: 4,
+                        workspace_id: 0,
+                        name: "project B".to_string(),
+                        color: "#ff0000".to_string(),
+                        active: true,
+                        at: Utc::now(),
+                        server_deleted_at: None,
+                    },
+                }],
                 time_entries: vec![SyncResult::<TimeEntry>::Failed {
-                    client_assigned_id: 5,
+                    entity_id: 5,
                     code: 3,
                     message: "error".to_string(),
                 }],
