@@ -20,6 +20,10 @@ pub enum SyncResult<T: Entity> {
     },
 }
 
+pub fn changed<T: Entity>(entity: T) -> SyncResult<T> {
+    SyncResult::<T>::Changed(entity)
+}
+
 pub fn created<T: Entity>(client_assigned_id: Id, entity: T) -> SyncResult<T> {
     SyncResult::<T>::Created {
         client_assigned_id,
@@ -78,6 +82,37 @@ impl SyncOutcome {
             projects: [&a.projects[..], &b.projects[..]].concat(),
             time_entries: [&a.time_entries[..], &b.time_entries[..]].concat(),
         }
+    }
+
+    pub fn without_unchanged(&self, known_changes: Delta) -> SyncOutcome {
+        SyncOutcome {
+            user: self.user.clone(),
+            projects: known_changes
+                .projects
+                .map(|known_projects| {
+                    SyncOutcome::remove_unchanged_in_list(&self.projects, known_projects)
+                })
+                .unwrap_or_else(|| self.projects.clone()),
+            time_entries: known_changes
+                .time_entries
+                .map(|known_time_entries| {
+                    SyncOutcome::remove_unchanged_in_list(&self.time_entries, known_time_entries)
+                })
+                .unwrap_or_else(|| self.time_entries.clone()),
+        }
+    }
+
+    fn remove_unchanged_in_list<T: Entity>(
+        changes: &[SyncResult<T>],
+        known_changes: Vec<T>,
+    ) -> Vec<SyncResult<T>> {
+        changes
+            .iter()
+            .filter_map(|change| match change {
+                SyncResult::<T>::Changed(entity) if known_changes.contains(&entity) => None, // nothing new, get rid of it
+                _ => Some(change.clone()), // keep it
+            })
+            .collect()
     }
 }
 

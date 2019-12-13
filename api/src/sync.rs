@@ -20,6 +20,7 @@ pub fn update_server_and_calculate_delta_for_client(
 ) -> Result<SyncOutcome, Error> {
     // 1. Get the data which have changed on the server since the last update
     let server_delta = server::fetch_changes_since(Some(last_sync), &api)?;
+    let client_delta = client_delta.unwrap_or_default();
 
     // Lemma:
     // There might be a running TE "A" on client even if it isn't in the delta
@@ -37,13 +38,16 @@ pub fn update_server_and_calculate_delta_for_client(
 
     // 2. Figure out what to change on client and what to change on the server
     let (mut client_resolution, mut server_resolution) =
-        conflicts::resolve(client_delta.clone().unwrap_or_default(), server_delta);
+        conflicts::resolve(client_delta.clone(), server_delta.clone());
     // - we assume that the two resulting sets are distinct
 
     // 3. Check how the running TEs were affected by the conflict resolution
-    let maybe_stopped = client_delta.as_ref().and_then(|delta| {
-        time_entry_which_should_be_stopped(&delta, &client_resolution, &server_resolution, &api)
-    });
+    let maybe_stopped = time_entry_which_should_be_stopped(
+        &client_delta,
+        &client_resolution,
+        &server_resolution,
+        &api,
+    );
 
     if let Some(stopped) = &maybe_stopped {
         // We must now propagate this change both to the server and to the client.
@@ -92,7 +96,7 @@ pub fn update_server_and_calculate_delta_for_client(
     let update_on_client = SyncOutcome::convert(client_resolution);
     let resolution = SyncOutcome::merge(update_on_client, server_update_outcome);
 
-    Ok(resolution)
+    Ok(resolution.without_unchanged(client_delta))
 }
 
 fn time_entry_which_should_be_stopped(

@@ -64,7 +64,7 @@ pub struct Delta {
     pub time_entries: Option<Vec<TimeEntry>>,
 }
 
-pub trait Entity: Clone + Serialize {
+pub trait Entity: Clone + Serialize + PartialEq {
     fn id(&self) -> Id;
     fn is_deleted(&self) -> bool;
     fn last_update(&self) -> DateTime<Utc>;

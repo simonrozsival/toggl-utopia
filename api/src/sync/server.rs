@@ -2,11 +2,11 @@ use chrono::{DateTime, Utc};
 
 use crate::error::Error;
 use crate::models::{Delta, Entity, Project, TimeEntry, User};
-use crate::sync::prelude::{created, failed, SyncOutcome, SyncResult};
+use crate::sync::prelude::{changed, created, failed, SyncOutcome, SyncResult};
 use crate::toggl_api::{
     endpoints,
     endpoints::CreateOrUpdate,
-    models::{Project as TogglProject, TimeEntry as TogglTimeEntry, User as TogglUser},
+    models::{Project as TogglProject, TimeEntry as TogglTimeEntry},
     TogglApi,
 };
 
@@ -119,7 +119,7 @@ where
     TToggl: Into<T> + CreateOrUpdate,
 {
     match api.update(entity.clone().into()) {
-        Ok(_) => None,
+        Ok(res) => Some(changed(res.into())),
         Err(err) => Some(failed(entity.id(), err)),
     }
 }
