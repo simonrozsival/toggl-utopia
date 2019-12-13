@@ -6,7 +6,8 @@ data class TimeEntry(
         val description: String,
         val duration: Int,
         val project_id: Int?,
-        val server_deleted_at: Any,
+        val server_deleted_at: String?,
         val start: String,
-        val workspace_id: Int
+        val workspace_id: Int,
+        val edited: Boolean = false
 )

@@ -10,7 +10,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app), MainInteractions 
     private val repository = Repository(getApplication())
 
     init {
-        Log.d("MainViewModel", "init() called")
         repository.restoreState()
     }
 
@@ -24,7 +23,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app), MainInteractions 
 
     override fun onCleared() {
         super.onCleared()
-        Log.d("MainViewModel", "onCleared() called")
         repository.persistState()
     }
 }

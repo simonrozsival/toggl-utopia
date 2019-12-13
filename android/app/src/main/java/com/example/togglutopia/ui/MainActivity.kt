@@ -17,5 +17,12 @@ class MainActivity : AppCompatActivity() {
             TogglApp(viewModel)
         }
     }
+
+    override fun onBackPressed() {
+        when (TogglState.currentScreen) {
+            Screen.Log -> super.onBackPressed()
+            is Screen.Edit -> navigateTo(Screen.Log)
+        }
+    }
 }
 

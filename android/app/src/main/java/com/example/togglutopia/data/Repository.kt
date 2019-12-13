@@ -3,13 +3,12 @@ package com.example.togglutopia.data
 import android.content.Context
 import android.util.Log
 import com.example.togglutopia.data.model.Delta
+import com.example.togglutopia.data.model.UpdateType
 import com.example.togglutopia.data.model.request.SyncRequest
 import com.example.togglutopia.data.model.response.SnapshotResponse
 import com.example.togglutopia.data.model.response.SyncResponse
-import com.example.togglutopia.ui.TogglApp
 import com.example.togglutopia.ui.TogglState
-import com.example.togglutopia.utils.ISO8601
-import com.example.togglutopia.utils.getISO8601
+import com.example.togglutopia.ui.localOnly
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -49,44 +48,16 @@ class Repository(context: Context) {
 
     fun login(username: String, password: String) {
         val credentials = Credentials.basic(username, password)
-        api.login(credentials).enqueue(object : Callback<SnapshotResponse> {
-            override fun onFailure(call: Call<SnapshotResponse>, t: Throwable) {
-                Log.d("Repository", "onFailure() called with: call = $call, t = $t")
-            }
-
-            override fun onResponse(call: Call<SnapshotResponse>, response: Response<SnapshotResponse>) {
-                handleSnapshot(call, response)
-            }
+        api.login(credentials).enqueue(SnapshotResponseHandler {
+            localDb.lastSync = it
+            localDb.persistState()
         })
     }
 
     fun sync() {
         TogglState.user?.api_token?.let { apiToken ->
-            api.sync("Bearer $apiToken", getDelta()).enqueue(object : Callback<SyncResponse> {
-                override fun onFailure(call: Call<SyncResponse>, t: Throwable) {
-                    Log.d("Repository", "onFailure() called with: call = $call, t = $t")
-                }
-
-                override fun onResponse(call: Call<SyncResponse>, response: Response<SyncResponse>) {
-                    response.body()?.meta?.utc_server_time?.let { localDb.lastSync = it }
-                    response.body()?.payload?.apply {
-                        time_entries.forEach { entityUpdate ->
-                            when (entityUpdate.type) {
-                                "Changed" -> {
-                                    TogglState.timeEntryList.removeIf { it.id == entityUpdate.payload.id }
-                                    TogglState.timeEntryList.add(entityUpdate.payload)
-                                }
-                                "Created" -> {
-                                    TogglState.timeEntryList.add(entityUpdate.payload)
-                                }
-                                "Deleted" -> {
-                                    TogglState.timeEntryList.removeIf { it.id == entityUpdate.payload.id }
-                                }
-                            }
-                        }
-                    }
-                }
-            })
+            val credentials = "Bearer $apiToken"
+            api.sync(credentials, getDelta()).enqueue(SyncResponseHandler { localDb.lastSync = it })
         }
     }
 
@@ -94,13 +65,46 @@ class Repository(context: Context) {
         return SyncRequest(
                 last_sync = localDb.lastSync ?: "",
                 delta = Delta(
-                    time_entries = listOf()
+                    time_entries = TogglState.timeEntryList.filter { it.edited }
                 )
         )
     }
+}
 
-    private fun handleSnapshot(call: Call<SnapshotResponse>, response: Response<SnapshotResponse>) {
-        Log.d("Repository", "onResponse() called with: call = $call, response = $response")
+class SyncResponseHandler(val onSuccess: (String) -> Unit) : Callback<SyncResponse> {
+    override fun onFailure(call: Call<SyncResponse>, t: Throwable) {
+        Log.d("SyncResponseHandler", "onFailure() called with: call = $call, t = $t")
+    }
+
+    override fun onResponse(call: Call<SyncResponse>, response: Response<SyncResponse>) {
+        response.body()?.payload?.apply {
+            TogglState.user = user.entity
+
+            TogglState.clearLocalTimeEntries()
+            time_entries.forEach { entityUpdate ->
+                when (entityUpdate.type) {
+                    UpdateType.Changed -> {
+                        TogglState.editTimeEntry(entityUpdate.entity)
+                    }
+                    UpdateType.Created -> {
+                        TogglState.addTimeEntry(entityUpdate.entity)
+                    }
+                    UpdateType.Deleted -> {
+                        TogglState.deleteTimeEntry(entityUpdate.entity)
+                    }
+                }
+            }
+            response.body()?.meta?.utc_server_time?.let { onSuccess(it) }
+        }
+    }
+}
+
+class SnapshotResponseHandler(val onSuccess: (String) -> Unit) : Callback<SnapshotResponse> {
+    override fun onFailure(call: Call<SnapshotResponse>, t: Throwable) {
+        Log.d("SnapshotResponseHandler", "onFailure() called with: call = $call, t = $t")
+    }
+
+    override fun onResponse(call: Call<SnapshotResponse>, response: Response<SnapshotResponse>) {
         if (response.isSuccessful) {
             // this should be persisted in the database not the global UI state
             response.body()?.payload?.apply {
@@ -115,8 +119,7 @@ class Repository(context: Context) {
                 }
             }
 
-            response.body()?.meta?.utc_server_time?.let { localDb.lastSync = it }
+            response.body()?.meta?.utc_server_time?.let { onSuccess(it) }
         }
     }
-
 }
