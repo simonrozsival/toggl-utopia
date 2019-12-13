@@ -6,6 +6,7 @@ import com.example.togglutopia.data.model.Delta
 import com.example.togglutopia.data.model.request.SyncRequest
 import com.example.togglutopia.data.model.response.SnapshotResponse
 import com.example.togglutopia.data.model.response.SyncResponse
+import com.example.togglutopia.ui.TogglApp
 import com.example.togglutopia.ui.TogglState
 import com.example.togglutopia.utils.ISO8601
 import com.example.togglutopia.utils.getISO8601
@@ -38,6 +39,14 @@ class Repository(context: Context) {
 
     private val api by lazy { retrofit.create(UtopiaApiService::class.java)}
 
+    fun restoreState() {
+        localDb.restoreState()
+    }
+
+    fun persistState() {
+        localDb.persistState()
+    }
+
     fun login(username: String, password: String) {
         val credentials = Credentials.basic(username, password)
         api.login(credentials).enqueue(object : Callback<SnapshotResponse> {
@@ -59,7 +68,23 @@ class Repository(context: Context) {
                 }
 
                 override fun onResponse(call: Call<SyncResponse>, response: Response<SyncResponse>) {
-                    Log.d("Repository", "onResponse() called with: call = $call, response = $response")
+                    response.body()?.meta?.utc_server_time?.let { localDb.lastSync = it }
+                    response.body()?.payload?.apply {
+                        time_entries.forEach { entityUpdate ->
+                            when (entityUpdate.type) {
+                                "Changed" -> {
+                                    TogglState.timeEntryList.removeIf { it.id == entityUpdate.payload.id }
+                                    TogglState.timeEntryList.add(entityUpdate.payload)
+                                }
+                                "Created" -> {
+                                    TogglState.timeEntryList.add(entityUpdate.payload)
+                                }
+                                "Deleted" -> {
+                                    TogglState.timeEntryList.removeIf { it.id == entityUpdate.payload.id }
+                                }
+                            }
+                        }
+                    }
                 }
             })
         }
