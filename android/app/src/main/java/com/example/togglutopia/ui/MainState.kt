@@ -1,15 +1,20 @@
 package com.example.togglutopia.ui
 
 import androidx.compose.Model
+import androidx.compose.State
 import androidx.compose.frames.ModelList
 import androidx.compose.frames.modelListOf
+import androidx.compose.state
+import androidx.compose.unaryPlus
 import com.example.togglutopia.data.model.Project
 import com.example.togglutopia.data.model.TimeEntry
 import com.example.togglutopia.data.model.User
 import com.example.togglutopia.utils.ISO8601
+import java.util.*
 
 @Model
 object TogglState {
+    var currentTime: Long = Date().time
     var currentScreen: Screen = Screen.Log
     var user: User? = null
     var timeEntryList: ModelList<TimeEntry> = modelListOf()
@@ -40,6 +45,24 @@ object TogglState {
                     ISO8601.now(),
                     "New with id: $lastNegativeId",
                     20,
+                    null,
+                    null,
+                    ISO8601.now(),
+                    workspaceId,
+                    true
+            )
+            addTimeEntry(newTimeEntry)
+        }
+    }
+
+    fun newRunningTimeEntry() {
+        user?.default_workspace_id?.let { workspaceId ->
+            val lastNegativeId = timeEntryList.localOnly().minBy { it.id }?.id ?: -1
+            val newTimeEntry = TimeEntry(
+                    lastNegativeId - 1,
+                    ISO8601.now(),
+                    "New with running id: $lastNegativeId",
+                    null,
                     null,
                     null,
                     ISO8601.now(),

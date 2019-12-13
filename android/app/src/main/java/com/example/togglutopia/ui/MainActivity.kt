@@ -1,11 +1,14 @@
 package com.example.togglutopia.ui
 
 import android.os.Bundle
+import android.os.Handler
+import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Observer
+
 import androidx.ui.core.setContent
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import java.util.*
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -16,6 +19,18 @@ class MainActivity : AppCompatActivity() {
         setContent {
             TogglApp(viewModel)
         }
+
+        val handler = Handler()
+        val timer = Timer(false)
+        val timerTask: TimerTask = object : TimerTask() {
+            override fun run() {
+                handler.post {
+                    TogglState.currentTime = Date().time
+                    Log.d("TimerTask", TogglState.currentTime.toString())
+                }
+            }
+        }
+        timer.schedule(timerTask, 1000, 1000) // 1000 = 1 second.
     }
 
     override fun onBackPressed() {

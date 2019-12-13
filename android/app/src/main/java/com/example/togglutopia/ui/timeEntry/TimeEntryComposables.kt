@@ -1,6 +1,7 @@
 package com.example.togglutopia.ui.timeEntry
 
 import androidx.compose.Composable
+import androidx.compose.State
 import androidx.compose.unaryPlus
 import androidx.ui.core.Text
 import androidx.ui.core.TextField
@@ -15,6 +16,7 @@ import androidx.ui.material.withOpacity
 import com.example.togglutopia.data.model.TimeEntry
 import com.example.togglutopia.ui.TogglState
 import com.example.togglutopia.utils.ISO8601
+import java.lang.IllegalStateException
 
 @Composable
 fun TimeEntryContent(timeEntry: TimeEntry, isEditable: Boolean = false) {
@@ -40,7 +42,7 @@ fun EditableTitle(timeEntry: TimeEntry) {
 @Composable
 fun Title(timeEntry: TimeEntry) {
     var style = ((+MaterialTheme.typography()).subtitle1).withOpacity(0.87f)
-    if (timeEntry.id < 0) {
+    if (timeEntry.edited) {
         style = style.copy(color = Color.Red)
     }
     Text(timeEntry.description, style = style)
@@ -59,6 +61,11 @@ fun Project(timeEntry: TimeEntry) {
 
 @Composable
 fun TimeEntryDuration(timeEntry: TimeEntry) {
-    val duration = String.format("%d:%02d:%02d", timeEntry.duration / 3600, (timeEntry.duration % 3600) / 60, (timeEntry.duration % 60));
+    val d = timeEntry.duration ?: getRunningDuration(timeEntry)
+    val duration = String.format("%d:%02d:%02d", d / 3600, (d % 3600) / 60, (d % 60));
     Text(duration, style = ((+MaterialTheme.typography()).body2).withOpacity(0.87f))
+}
+
+private fun getRunningDuration(timeEntry: TimeEntry): Int {
+    return (TogglState.currentTime - ISO8601.toCalendar(timeEntry.start).time.time).toInt() / 1000
 }
