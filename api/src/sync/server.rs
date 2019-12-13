@@ -3,21 +3,25 @@ use chrono::{DateTime, Utc};
 use crate::error::Error;
 use crate::models::{Delta, Entity, Project, TimeEntry, User};
 use crate::sync::prelude::{created, failed, SyncOutcome, SyncResult};
-use crate::toggl_api::models::{Project as TogglProject, TimeEntry as TogglTimeEntry};
-use crate::toggl_api::TogglApi;
+use crate::toggl_api::{
+    endpoints,
+    endpoints::CreateOrUpdate,
+    models::{Project as TogglProject, TimeEntry as TogglTimeEntry, User as TogglUser},
+    TogglApi,
+};
 
 pub fn fetch_changes_since(since: Option<DateTime<Utc>>, api: &TogglApi) -> Result<Delta, Error> {
-    let user: User = api.fetch_user()?.into();
+    let user: User = api.fetch(endpoints::user::get())?.into();
 
     let projects: Vec<Project> = api
-        .fetch_projects(since)?
+        .fetch(endpoints::projects::get(since))?
         .into_iter()
         .filter(|project| since.unwrap_or(project.at) <= project.at) // remove false positives
         .map(|p| p.into())
         .collect();
 
     let time_entries: Vec<TimeEntry> = api
-        .fetch_time_entries(since)?
+        .fetch(endpoints::time_entries::get(since))?
         .into_iter()
         .filter(|te| since.unwrap_or(te.at) <= te.at) // remove false positives
         .map(|te| te.into())
@@ -35,50 +39,6 @@ pub fn currently_running_time_entry(api: &TogglApi) -> Result<Option<TimeEntry>,
     Ok(maybe_te.map(|te| te.into()))
 }
 
-fn create_time_entry(entity: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
-    match api.create_time_entry(TogglTimeEntry::from(&entity)) {
-        Ok(created_time_entry) => Some(created(entity.id, created_time_entry.into())),
-        Err(err) => Some(failed(entity.id, err)),
-    }
-}
-
-fn update_time_entry(entity: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
-    match api.update_time_entry(TogglTimeEntry::from(&entity)) {
-        Ok(_) => None,
-        Err(err) => Some(failed(entity.id, err)),
-    }
-}
-
-fn push_time_entry(entity: &TimeEntry, api: &TogglApi) -> Option<SyncResult<TimeEntry>> {
-    if !entity.exists_on_server() {
-        create_time_entry(entity, &api)
-    } else {
-        update_time_entry(entity, &api)
-    }
-}
-
-fn create_project(entity: &Project, api: &TogglApi) -> Option<SyncResult<Project>> {
-    match api.create_project(TogglProject::from(&entity)) {
-        Ok(created_project) => Some(created(entity.id, created_project.into())),
-        Err(err) => Some(failed(entity.id, err)),
-    }
-}
-
-fn update_project(entity: &Project, api: &TogglApi) -> Option<SyncResult<Project>> {
-    match api.update_project(TogglProject::from(&entity)) {
-        Ok(_) => None,
-        Err(err) => Some(failed(entity.id, err)),
-    }
-}
-
-fn push_project(entity: &Project, api: &TogglApi) -> Option<SyncResult<Project>> {
-    if !entity.exists_on_server() {
-        create_project(entity, &api)
-    } else {
-        update_project(entity, &api)
-    }
-}
-
 pub fn apply_changes(delta: Delta, api: &TogglApi) -> SyncOutcome {
     use std::collections::HashMap;
 
@@ -91,7 +51,7 @@ pub fn apply_changes(delta: Delta, api: &TogglApi) -> SyncOutcome {
         .projects
         .unwrap_or_default()
         .into_iter()
-        .filter_map(|entity| push_project(&entity, &api))
+        .filter_map(|entity| push::<Project, TogglProject>(&api, &entity))
         .collect();
 
     for result in projects.iter() {
@@ -120,12 +80,46 @@ pub fn apply_changes(delta: Delta, api: &TogglApi) -> SyncOutcome {
 
             te
         })
-        .filter_map(|entity| push_time_entry(&entity, &api))
+        .filter_map(|entity| push::<TimeEntry, TogglTimeEntry>(&api, &entity))
         .collect();
 
     SyncOutcome {
         user: None,
         projects,
         time_entries,
+    }
+}
+
+fn push<T, TApi>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
+where
+    T: Entity + Into<TApi>,
+    TApi: CreateOrUpdate + Into<T>,
+{
+    if entity.exists_on_server() {
+        update(api, entity)
+    } else {
+        create(api, entity)
+    }
+}
+
+fn create<T, TApi>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
+where
+    T: Entity + Into<TApi>,
+    TApi: Into<T> + CreateOrUpdate,
+{
+    match api.create(entity.clone().into()) {
+        Ok(res) => Some(created(entity.id(), res.into())),
+        Err(err) => Some(failed(entity.id(), err)),
+    }
+}
+
+fn update<T, TApi>(api: &TogglApi, entity: &T) -> Option<SyncResult<T>>
+where
+    T: Entity + Into<TApi>,
+    TApi: Into<T> + CreateOrUpdate,
+{
+    match api.update(entity.clone().into() as TApi) {
+        Ok(_) => None,
+        Err(err) => Some(failed(entity.id(), err)),
     }
 }

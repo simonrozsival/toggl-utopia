@@ -86,46 +86,46 @@ impl Into<UtopiaTimeEntry> for TimeEntry {
     }
 }
 
-impl User {
-    pub fn from(user: &UtopiaUser) -> User {
+impl Into<User> for UtopiaUser {
+    fn into(self) -> User {
         User {
-            id: user.id,
-            default_workspace_id: user.default_workspace_id,
-            fullname: user.fullname.clone(),
-            api_token: user.api_token.clone(),
-            at: user.at,
+            id: self.id,
+            default_workspace_id: self.default_workspace_id,
+            fullname: self.fullname.clone(),
+            api_token: self.api_token.clone(),
+            at: self.at,
         }
     }
 }
 
-impl Project {
-    pub fn from(project: &UtopiaProject) -> Project {
+impl Into<Project> for UtopiaProject {
+    fn into(self) -> Project {
         Project {
-            id: project.id,
-            workspace_id: project.workspace_id,
-            name: project.name.clone(),
-            color: project.color.clone(),
-            active: project.active,
-            at: project.at,
-            server_deleted_at: project.server_deleted_at,
+            id: self.id,
+            workspace_id: self.workspace_id,
+            name: self.name.clone(),
+            color: self.color.clone(),
+            active: self.active,
+            at: self.at,
+            server_deleted_at: self.server_deleted_at,
         }
     }
 }
 
-impl TimeEntry {
-    pub fn from(te: &UtopiaTimeEntry) -> TimeEntry {
+impl Into<TimeEntry> for UtopiaTimeEntry {
+    fn into(self) -> TimeEntry {
         TimeEntry {
-            id: te.id,
-            workspace_id: te.workspace_id,
-            project_id: te.project_id,
-            description: te.description.clone(),
-            start: te.start,
-            duration: te
+            id: self.id,
+            workspace_id: self.workspace_id,
+            project_id: self.project_id,
+            description: self.description.clone(),
+            start: self.start,
+            duration: self
                 .duration
                 .map(|d| d as i64)
-                .unwrap_or(-te.start.timestamp()) as i64,
-            at: te.at,
-            server_deleted_at: te.server_deleted_at,
+                .unwrap_or(-self.start.timestamp()) as i64,
+            at: self.at,
+            server_deleted_at: self.server_deleted_at,
             created_with: None,
         }
     }
