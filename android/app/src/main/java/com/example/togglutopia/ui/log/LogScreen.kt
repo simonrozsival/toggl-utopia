@@ -10,6 +10,7 @@ import androidx.ui.foundation.Clickable
 import androidx.ui.foundation.VerticalScroller
 import androidx.ui.layout.*
 import androidx.ui.material.Button
+import androidx.ui.material.OutlinedButtonStyle
 import androidx.ui.material.ripple.Ripple
 import androidx.ui.material.surface.Card
 import androidx.ui.material.surface.Surface
@@ -23,7 +24,7 @@ import com.example.togglutopia.ui.timeEntry.TimeEntryContent
 import java.util.*
 
 @Composable
-fun LogScreen(interactions: LogInteractions, currentTime: Long) {
+fun LogScreen(interactions: LogInteractions) {
     Column {
         VerticalScroller(modifier = Flexible(1f)) {
             Column(modifier = Spacing(left = 8.dp, right = 8.dp)) {
@@ -49,7 +50,7 @@ fun TimeEntryRow(timeEntry: TimeEntry) {
     HeightSpacer(12.dp)
     Ripple(bounded = true) {
         Clickable(onClick = {
-            navigateTo(Screen.Edit(timeEntry.id))
+            navigateTo(Screen.EditTimeEntry(timeEntry.id))
         }) {
             Card(elevation = 4.dp) {
                 TimeEntryContent(timeEntry)
@@ -61,7 +62,7 @@ fun TimeEntryRow(timeEntry: TimeEntry) {
 @Composable
 private fun BottomBar(content: @Composable() () -> Unit) {
     Surface(elevation = 8.dp) {
-        Container(modifier = Height(80.dp) wraps Expanded) {
+        Container(modifier = Height(92.dp) wraps Expanded) {
             Row {
                 content()
             }
@@ -84,9 +85,9 @@ fun StatusInfo(interactions: LogInteractions) {
                 HeightSpacer(height = 16.dp)
 
                 Row {
-                    Button(text = "Add TE manually", onClick = { TogglState.newTimeEntry() })
+                    Button(text = "Add TE manually", onClick = { TogglState.newTimeEntry() }, style = OutlinedButtonStyle())
                     WidthSpacer(width = 16.dp)
-                    Button(text = "Add Running TE", onClick = { TogglState.newRunningTimeEntry() })
+                    Button(text = "Add Running TE", onClick = { TogglState.newRunningTimeEntry() }, style = OutlinedButtonStyle())
                 }
             }
         }
@@ -97,8 +98,12 @@ fun StatusInfo(interactions: LogInteractions) {
 @Preview
 @Composable
 fun preview() {
+    TogglState.timeEntryList.addAll(listOf(
+            TimeEntry(0, "", "First Time Entry", 130, 1, "", "", 1),
+            TimeEntry(0, "", "Second Time Entry", 130, 1, "", "", 1)
+    ))
     LogScreen(object : LogInteractions {
         override fun sync() {
         }
-    }, TogglState.currentTime)
+    })
 }

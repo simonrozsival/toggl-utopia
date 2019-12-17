@@ -13,6 +13,19 @@ import androidx.ui.material.Button
 import androidx.ui.material.MaterialTheme
 import androidx.ui.material.surface.Card
 import androidx.ui.tooling.preview.Preview
+import androidx.compose.Composable
+import androidx.compose.ambient
+import androidx.compose.unaryPlus
+import androidx.ui.core.ContextAmbient
+import androidx.ui.core.Text
+import androidx.ui.core.dp
+import androidx.ui.foundation.Clickable
+import androidx.ui.foundation.VerticalScroller
+import androidx.ui.layout.*
+import androidx.ui.material.Button
+import androidx.ui.material.ripple.Ripple
+import androidx.ui.material.surface.Card
+import androidx.ui.material.surface.Surface
 import com.example.togglutopia.ui.LoginInteractions
 
 @Model
@@ -21,24 +34,32 @@ class LoginState(var username: String, var password: String)
 @Composable
 fun LoginScreen(interactions: LoginInteractions) {
     val loginState = +memo { LoginState("valenta@test.com", "testtest") }
-    Padding(padding = 8.dp) {
-        Card(elevation = 4.dp) {
-            Padding(padding = 8.dp) {
+    Container() {
+        Card(elevation = 4.dp, modifier = Height(200.dp) wraps Expanded wraps Spacing(left = 8.dp, right = 8.dp)) {
+            Padding(padding = 16.dp) {
                 Column {
                     Text(text = "Login", style = ((+MaterialTheme.typography()).h6))
-                    TextField(
-                            value = loginState.username,
-                            onValueChange = { loginState.username = it },
-                            textStyle = ((+MaterialTheme.typography()).body2)
-                    )
-                    TextField(
-                            value = loginState.password,
-                            onValueChange = { loginState.password = it },
-                            textStyle = ((+MaterialTheme.typography()).body2)
-                    )
+                    HeightSpacer(height = 16.dp)
+                    AuthEditTextField(loginState.username) { loginState.username = it }
+                    HeightSpacer(height = 1.dp)
+                    AuthEditTextField(loginState.password) { loginState.password = it }
+                    HeightSpacer(height = 16.dp)
                     Button(text = "Login", onClick = { interactions.login(loginState.username, loginState.password) })
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun AuthEditTextField(initValue: String, onValueChange: (String) -> Unit) {
+    Card(elevation = 1.dp) {
+        Padding(padding = 6.dp) {
+            TextField(
+                    value = initValue,
+                    onValueChange = onValueChange,
+                    textStyle = ((+MaterialTheme.typography()).body2)
+            )
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.example.togglutopia.utils
 
+import android.os.Handler
+import com.example.togglutopia.ui.TogglState
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.*
@@ -55,4 +57,17 @@ object ISO8601 {
         calendar.timeInMillis = newMillis
         return fromCalendar(calendar)
     }
+}
+
+fun startTimer() {
+    val handler = Handler()
+    val timer = Timer(false)
+    val timerTask: TimerTask = object : TimerTask() {
+        override fun run() {
+            handler.post {
+                TogglState.currentTime = Date().time
+            }
+        }
+    }
+    timer.schedule(timerTask, 1000, 1000) // 1000 = 1 second.
 }

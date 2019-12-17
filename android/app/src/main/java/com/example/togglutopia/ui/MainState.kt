@@ -6,6 +6,7 @@ import androidx.compose.frames.ModelList
 import androidx.compose.frames.modelListOf
 import androidx.compose.state
 import androidx.compose.unaryPlus
+import com.example.togglutopia.data.model.EntityUpdate
 import com.example.togglutopia.data.model.Project
 import com.example.togglutopia.data.model.TimeEntry
 import com.example.togglutopia.data.model.User
@@ -15,22 +16,25 @@ import java.util.*
 @Model
 object TogglState {
     var currentTime: Long = Date().time
-    var currentScreen: Screen = Screen.Log
+    var currentScreen: Screen = Screen.MainLog
     var user: User? = null
     var timeEntryList: ModelList<TimeEntry> = modelListOf()
     var projectList: ModelList<Project> = modelListOf()
 
-    fun addTimeEntry(timeEntry: TimeEntry) {
-        timeEntryList.add(timeEntry)
-    }
-
-    fun editTimeEntry(timeEntry: TimeEntry) {
+    fun localEditTimeEntry(timeEntry: TimeEntry) {
         timeEntryList.removeIf { it.id == timeEntry.id }
         timeEntryList.add(timeEntry)
     }
 
-    fun deleteTimeEntry(timeEntry: TimeEntry) {
-        timeEntryList.removeIf { it.id == timeEntry.id }
+    fun editTimeEntry(entityUpdate: EntityUpdate<TimeEntry>) {
+        val originalId = entityUpdate.client_assigned_id ?: entityUpdate.entity.id
+        timeEntryList.removeIf { it.id == originalId }
+        timeEntryList.add(entityUpdate.entity)
+    }
+
+    fun deleteTimeEntry(entityUpdate: EntityUpdate<TimeEntry>) {
+        val originalId = entityUpdate.client_assigned_id ?: entityUpdate.entity.id
+        timeEntryList.removeIf { it.id == originalId }
     }
 
     fun clearLocalTimeEntries() {
@@ -51,17 +55,17 @@ object TogglState {
                     workspaceId,
                     true
             )
-            addTimeEntry(newTimeEntry)
+            timeEntryList.add(newTimeEntry)
         }
     }
 
-    fun newRunningTimeEntry() {
+    fun newRunningTimeEntry(description: String? = null) {
         user?.default_workspace_id?.let { workspaceId ->
             val lastNegativeId = timeEntryList.localOnly().minBy { it.id }?.id ?: -1
             val newTimeEntry = TimeEntry(
                     lastNegativeId - 1,
                     ISO8601.now(),
-                    "New with running id: $lastNegativeId",
+                    description ?: "New with running id: $lastNegativeId",
                     null,
                     null,
                     null,
@@ -69,7 +73,7 @@ object TogglState {
                     workspaceId,
                     true
             )
-            addTimeEntry(newTimeEntry)
+            timeEntryList.add(newTimeEntry)
         }
     }
 }
@@ -78,8 +82,8 @@ object TogglState {
  * Class defining the screens we have in the app: home, article details and interests
  */
 sealed class Screen {
-    data class Edit(val timeEntryId: Int) : Screen()
-    object Log : Screen()
+    data class EditTimeEntry(val timeEntryId: Int) : Screen()
+    object MainLog : Screen()
 }
 
 fun Iterable<TimeEntry>.localOnly(): List<TimeEntry> {

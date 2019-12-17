@@ -57,11 +57,11 @@ class Repository(context: Context) {
     fun sync() {
         TogglState.user?.api_token?.let { apiToken ->
             val credentials = "Bearer $apiToken"
-            api.sync(credentials, getDelta()).enqueue(SyncResponseHandler { localDb.lastSync = it })
+            api.sync(credentials, getSyncRequest()).enqueue(SyncResponseHandler { localDb.lastSync = it })
         }
     }
 
-    private fun getDelta(): SyncRequest {
+    private fun getSyncRequest(): SyncRequest {
         return SyncRequest(
                 last_sync = localDb.lastSync ?: "",
                 delta = Delta(
@@ -80,17 +80,17 @@ class SyncResponseHandler(val onSuccess: (String) -> Unit) : Callback<SyncRespon
         response.body()?.payload?.apply {
             TogglState.user = user.entity
 
-            TogglState.clearLocalTimeEntries()
+//            TogglState.clearLocalTimeEntries()
             time_entries.forEach { entityUpdate ->
                 when (entityUpdate.type) {
                     UpdateType.Changed -> {
-                        TogglState.editTimeEntry(entityUpdate.entity)
+                        TogglState.editTimeEntry(entityUpdate)
                     }
                     UpdateType.Created -> {
-                        TogglState.addTimeEntry(entityUpdate.entity)
+                        TogglState.editTimeEntry(entityUpdate)
                     }
                     UpdateType.Deleted -> {
-                        TogglState.deleteTimeEntry(entityUpdate.entity)
+                        TogglState.deleteTimeEntry(entityUpdate)
                     }
                 }
             }

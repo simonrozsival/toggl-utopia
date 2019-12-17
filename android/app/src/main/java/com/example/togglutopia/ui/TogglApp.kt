@@ -27,9 +27,9 @@ fun TogglApp(interactions: MainInteractions) {
                 TopAppBar(
                         title = { Text(text = "Toggl Utopia") },
                         navigationIcon = {
-                            if (TogglState.currentScreen is Screen.Edit) {
+                            if (TogglState.currentScreen is Screen.EditTimeEntry) {
                                 VectorImageButton(R.drawable.ic_back) {
-                                    navigateTo(Screen.Log)
+                                    navigateTo(Screen.MainLog)
                                 }
                             }
                         }
@@ -46,8 +46,8 @@ private fun AppContent(interactions: MainInteractions) {
     Crossfade(TogglState.currentScreen) { screen ->
         Surface(color = (+MaterialTheme.colors()).background) {
             when (screen) {
-                is Screen.Log -> LogScreen(interactions, TogglState.currentTime)
-                is Screen.Edit -> EditScreen(screen.timeEntryId)
+                is Screen.MainLog -> LogScreen(interactions)
+                is Screen.EditTimeEntry -> EditScreen(screen.timeEntryId)
             }
         }
     }
